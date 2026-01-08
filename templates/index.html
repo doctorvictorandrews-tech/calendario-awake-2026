@@ -4,60 +4,100 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Awake OS | Enterprise</title>
+    
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
     <style>
-        :root { --bg-app:#F8FAFC; --bg-sidebar:#0F172A; --bg-card:#FFFFFF; --txt-primary:#0F172A; --txt-secondary:#64748B; --txt-inverse:#F8FAFC; --border-light:#E2E8F0; --border-dark:#1E293B; --brand:#10B981; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
+        /* DESIGN SYSTEM (LIGHT MODE CLEAN) */
+        :root {
+            --bg-app: #F8FAFC; 
+            --bg-sidebar: #0F172A; 
+            --bg-card: #FFFFFF;
+            --txt-primary: #0F172A; 
+            --txt-secondary: #64748B; 
+            --txt-inverse: #F8FAFC;
+            --border-light: #E2E8F0; 
+            --border-dark: #1E293B;
+            --brand: #10B981; 
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
 
-        /* MODAL EDITOR */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
+
+        /* MODAL EDITOR (Atualizado) */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: center; }
-        .modal-card { background: white; width: 500px; max-width: 90%; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; }
+        .modal-card { background: white; width: 550px; max-width: 90%; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; }
         .modal-header { padding: 20px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
         .modal-title { font-size: 18px; font-weight: 800; }
         .modal-body { padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 15px; }
-        .editor-item { display: flex; gap: 10px; align-items: flex-start; background: white; border: 1px solid var(--border-light); padding: 10px; border-radius: 8px; }
+        
+        .editor-item { display: flex; gap: 10px; align-items: flex-start; background: white; border: 1px solid var(--border-light); padding: 12px; border-radius: 8px; transition:0.2s; }
+        .editor-item:hover { border-color: #CBD5E1; }
         .editor-inputs { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-        .ed-input { width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 13px; }
-        .ed-area { width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 12px; resize: vertical; min-height: 60px; }
-        .btn-del { color: #EF4444; background: #FEF2F2; border: 1px solid #FCA5A5; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; display: grid; place-items: center; }
+        .ed-row { display: flex; gap: 8px; }
+        .ed-input { flex: 1; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 14px; outline:none; }
+        .ed-select { width: 140px; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 12px; background: #F8FAFC; cursor: pointer; outline:none; }
+        .ed-area { width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 12px; resize: vertical; min-height: 60px; outline:none; }
+        
+        .btn-del { color: #EF4444; background: #FEF2F2; border: 1px solid #FCA5A5; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; display: grid; place-items: center; transition:0.2s; }
+        .btn-del:hover { background: #EF4444; color: white; }
+        
         .modal-footer { padding: 20px; border-top: 1px solid var(--border-light); display: flex; justify-content: space-between; background: #F8FAFC; }
-        .btn-save { background: var(--brand); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; }
-        .btn-add { background: white; border: 1px solid var(--border-light); color: var(--txt-primary); padding: 10px 15px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .btn-save { background: var(--brand); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; transition:0.2s; }
+        .btn-save:hover { filter: brightness(1.1); transform: translateY(-1px); }
+        .btn-add { background: white; border: 1px solid var(--border-light); color: var(--txt-primary); padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition:0.2s; }
+        .btn-add:hover { background: #F1F5F9; }
 
-        /* RESTO DO CSS (IGUAL ANTERIOR) */
+        /* RESTO DO CSS */
         #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-app); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
         .login-box { background: var(--bg-card); padding: 40px; border-radius: 20px; width: 350px; text-align: center; border: 1px solid var(--border-light); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
         .login-input { width: 100%; padding: 14px; margin: 20px 0; border: 1px solid var(--border-light); border-radius: 8px; font-size: 16px; background: var(--bg-app); outline: none; }
-        .login-btn { width: 100%; padding: 14px; background: var(--brand); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
-        
-        .sidebar { width: 400px; background: var(--bg-sidebar); color: var(--txt-inverse); display: flex; flex-direction: column; border-right: 1px solid var(--border-dark); z-index: 50; transition: 0.3s; }
+        .login-btn { width: 100%; padding: 14px; background: var(--brand); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .login-btn:hover { filter: brightness(1.1); }
+
+        .sidebar { width: 400px; background: var(--bg-sidebar); color: var(--txt-inverse); display: flex; flex-direction: column; border-right: 1px solid var(--border-dark); z-index: 50; transition: transform 0.3s ease; }
         .brand-section { padding: 20px; border-bottom: 1px solid var(--border-dark); background: rgba(0,0,0,0.2); }
+        .user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .avatar { width: 32px; height: 32px; background: var(--brand); border-radius: 8px; display: grid; place-items: center; font-weight: 700; color: white; }
         .tabs { display: flex; gap: 5px; background: #1E293B; padding: 4px; border-radius: 8px; }
-        .tab { flex: 1; text-align: center; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 6px; color: #94A3B8; }
+        .tab { flex: 1; text-align: center; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 6px; color: #94A3B8; transition: 0.2s; }
         .tab.active { background: #334155; color: white; }
+
         .view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         #historyView { display: none; }
         .chat-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
-        .bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; max-width: 90%; white-space: pre-wrap; }
-        .bubble-ai { background: #1E293B; color: #E2E8F0; }
+        .bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; max-width: 90%; white-space: pre-wrap; }
+        .bubble-ai { background: #1E293B; color: #E2E8F0; border: 1px solid #334155; }
         .bubble-user { align-self: flex-end; background: var(--brand); color: #064E3B; font-weight: 600; margin-left: auto; }
         .input-area { padding: 20px; background: var(--bg-sidebar); border-top: 1px solid var(--border-dark); }
-        .chat-input { width: 100%; background: #1E293B; border: 1px solid #334155; color: white; padding: 14px; border-radius: 12px; outline: none; resize: none; height: 50px; }
-        
+        .input-container { background: #1E293B; border-radius: 12px; border: 1px solid #334155; display: flex; align-items: flex-end; min-height: 50px; }
+        .chat-input { width: 100%; background: transparent; border: none; color: white; padding: 14px; font-size: 14px; outline: none; resize: none; overflow-y: hidden; height: 50px; max-height: 120px; font-family: 'Inter', sans-serif; }
+        .send-btn { background: var(--brand); border: none; width: 32px; height: 32px; border-radius: 6px; margin: 0 8px 8px 0; cursor: pointer; color: #022c22; display: grid; place-items: center; flex-shrink: 0; }
+
+        .logs-list { flex: 1; overflow-y: auto; padding: 0; }
+        .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; align-items: flex-start; }
+        .undo-btn { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; }
+
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
         .top-bar { padding: 20px 30px; background: var(--bg-card); border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
+        .nav-buttons { display: flex; gap: 4px; }
+        .nav-btn { width: 36px; height: 36px; border: 1px solid var(--border-light); background: var(--bg-app); border-radius: 6px; cursor: pointer; color: var(--txt-secondary); display: grid; place-items: center; transition:0.2s; }
+        .nav-btn:hover { background: #E2E8F0; color: var(--txt-primary); }
+        
         .calendar-scroll { flex: 1; overflow-y: auto; padding: 20px; }
         .grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 10px; }
-        .weekday { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-secondary); }
+        .weekday { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-secondary); text-transform: uppercase; }
         .grid-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding-bottom: 40px; }
         
         .day-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; min-height: 140px; padding: 12px; display: flex; flex-direction: column; position: relative; cursor: pointer; transition: 0.2s; }
         .day-card:hover { border-color: var(--brand); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .day-num { font-size: 18px; font-weight: 700; color: var(--txt-primary); margin-bottom: 8px; }
         .is-today { border: 2px solid var(--brand); }
-        
+        .is-today .day-num { color: var(--brand); }
+
         .chip { font-size: 11px; padding: 6px 8px; border-radius: 6px; font-weight: 600; margin-bottom: 4px; border-left: 3px solid transparent; position: relative; }
         .has-details::after { content: '📝'; position: absolute; right: 5px; top: 50%; transform: translateY(-50%); font-size: 10px; opacity: 0.7; }
         
@@ -68,12 +108,17 @@
         .c-com { background: #eff6ff; color: #1e3a8a; border-color: #93c5fd; }
         .c-off { background: #F1F5F9; color: #64748B; border-color: #CBD5E1; text-decoration: line-through; }
 
+        .menu-toggle { display: none; font-size: 24px; cursor: pointer; color: var(--txt-primary); margin-right: 15px; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
         @media (max-width: 768px) {
             .sidebar { position: fixed; height: 100%; left: 0; transform: translateX(-100%); width: 85%; }
             .sidebar.active { transform: translateX(0); }
+            .menu-toggle { display: block; }
+            .overlay.active { display: block; }
             .grid-header { display: none; } 
             .grid-body { grid-template-columns: 1fr; }
         }
+        .toast { position: fixed; top: 20px; right: 20px; background: var(--bg-card); padding: 15px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-left: 4px solid var(--brand); z-index: 100; color: var(--txt-primary); display:none; }
     </style>
 </head>
 <body>
@@ -87,41 +132,65 @@
             <div class="modal-body" id="editorList">
                 </div>
             <div class="modal-footer">
-                <button class="btn-add" onclick="addEditorItem()"><i class="ph-bold ph-plus"></i> Adicionar</button>
-                <button class="btn-save" onclick="saveEditor()">SALVAR DIA</button>
+                <button class="btn-add" onclick="addEditorItem()"><i class="ph-bold ph-plus"></i> Novo Item</button>
+                <button class="btn-save" onclick="saveEditor()"><i class="ph-bold ph-check"></i> SALVAR DIA</button>
             </div>
         </div>
     </div>
 
     <div id="auth-screen">
         <div class="login-box">
-            <h2 style="margin-bottom:10px;">Awake OS</h2>
+            <div style="font-size:40px; color:var(--brand); margin-bottom:10px;"><i class="ph-bold ph-calendar-check"></i></div>
+            <h2 style="margin:0; color:var(--txt-primary);">Awake OS</h2>
+            <p style="color:var(--txt-secondary); font-size:14px;">Identifique-se</p>
             <input type="text" id="nameInput" class="login-input" placeholder="Seu Nome">
             <button class="login-btn" onclick="doLogin()">ENTRAR</button>
         </div>
     </div>
 
     <div class="overlay" onclick="toggleMenu()"></div>
+    <div class="toast" id="toast"></div>
+
     <div class="sidebar" id="sidebar">
         <div class="brand-section">
-            <div style="font-weight:800; color:white; margin-bottom:10px;">Awake OS</div>
+            <div class="user-info">
+                <div class="avatar" id="avatar"></div>
+                <div style="font-weight:700; font-size:14px;"><span id="userNameDisplay"></span></div>
+            </div>
             <div class="tabs">
-                <div class="tab active" onclick="switchTab('chat')">CHAT</div>
+                <div class="tab active" onclick="switchTab('chat')">CHAT IA</div>
                 <div class="tab" onclick="switchTab('history')">HISTÓRICO</div>
             </div>
         </div>
         <div id="chatView" class="view">
-            <div class="chat-scroll" id="chatHistory"><div class="bubble bubble-ai">Olá!</div></div>
-            <div class="input-area"><textarea id="userInput" class="chat-input" placeholder="Digite..." rows="1"></textarea></div>
+            <div class="chat-scroll" id="chatHistory"><div class="msg-group"><div class="bubble bubble-ai">Olá! Pronta para atualizar o calendário.</div></div></div>
+            <div class="input-area">
+                <div class="input-container">
+                    <textarea id="userInput" class="chat-input" placeholder="Digite..." rows="1"></textarea>
+                    <button class="send-btn" onclick="sendMessage()"><i class="ph-bold ph-paper-plane-right"></i></button>
+                </div>
+            </div>
         </div>
-        <div id="historyView" class="view"><div class="logs-list" id="logsList"></div></div>
+        <div id="historyView" class="view">
+            <div class="logs-list" id="logsList"></div>
+        </div>
     </div>
 
     <div class="main">
         <div class="top-bar">
-            <div style="font-weight:800; font-size:20px;"><span id="monthTitle"></span></div>
-            <div>
-                <button onclick="changeMonth(-1)">&lt;</button> <button onclick="changeMonth(1)">&gt;</button>
+            <div style="display:flex; align-items:center;">
+                <i class="ph-bold ph-list menu-toggle" onclick="toggleMenu()"></i>
+                <div style="font-weight:800; font-size:20px; color:var(--txt-primary);">
+                    <span id="monthTitle"></span> <span style="font-size:0.6em; opacity:0.6;">2026</span>
+                </div>
+            </div>
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="downloadImage()" title="Baixar Imagem"><i class="ph-bold ph-camera"></i></button>
+                <div style="width:1px; background:var(--border-light); margin:0 4px;"></div>
+                <button class="nav-btn" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></button>
+                <button class="nav-btn" onclick="changeMonth(0)"><i class="ph-bold ph-house"></i></button>
+                <button class="nav-btn" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></button>
+                <button class="nav-btn" onclick="logout()" title="Sair"><i class="ph-bold ph-sign-out"></i></button>
             </div>
         </div>
         <div class="calendar-scroll">
@@ -135,10 +204,10 @@
         let currMonth = new Date().getMonth() + 1;
         if(new Date().getFullYear() !== 2026) currMonth = 1;
         let dbEvents = [];
+        let chatContext = [];
         let currUser = localStorage.getItem('awake_user');
-        let currentEditingDate = null; // Data sendo editada no modal
+        let currentEditingDate = null;
 
-        // BASE DE DADOS FIXA (Feriados)
         const FERIADOS = {
             "2026-01-01": {nome: "Confraternização", tipo: "fer"}, "2026-01-25": {nome: "Aniv. SP", tipo: "fer"},
             "2026-02-17": {nome: "Carnaval", tipo: "fer"}, "2026-03-08": {nome: "Dia da Mulher", tipo: "com"},
@@ -153,43 +222,67 @@
         };
 
         if(currUser) document.getElementById('auth-screen').style.display='none';
-        function doLogin() { localStorage.setItem('awake_user', document.getElementById('nameInput').value); location.reload(); }
+        function doLogin() {
+            const n = document.getElementById('nameInput').value.trim();
+            if(!n) return alert("Digite um nome!");
+            localStorage.setItem('awake_user', n);
+            currUser = n;
+            document.getElementById('auth-screen').style.display='none';
+            setupUser();
+        }
+        function setupUser() {
+            document.getElementById('userNameDisplay').innerText = currUser;
+            document.getElementById('avatar').innerText = currUser[0].toUpperCase();
+            init();
+        }
+        function logout() { localStorage.removeItem('awake_user'); window.location.reload(); }
 
         async function init() {
-            document.getElementById('userInput').addEventListener('keydown', (e)=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault(); sendMessage()}});
+            const ta = document.getElementById('userInput');
+            ta.addEventListener('input', function(){ this.style.height='auto'; this.style.height=(this.scrollHeight)+'px'; if(!this.value) this.style.height='50px'; });
+            ta.addEventListener('keydown', function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
             await loadEvents();
         }
         async function loadEvents() {
             try { const r = await fetch('/api/get_events'); dbEvents = await r.json(); render(); } catch(e){}
         }
 
-        // --- EDITOR LOGIC ---
+        // --- EDITOR MANUAL (NOVO) ---
         function openEditor(dateStr) {
             currentEditingDate = dateStr;
             document.getElementById('editorDateDisplay').innerText = dateStr.split('-').reverse().join('/');
             const list = document.getElementById('editorList');
             list.innerHTML = '';
 
-            // 1. Recupera o que está sendo mostrado no dia (Standard + DB)
-            // Para editar, vamos reconstruir a lista baseada no que o usuário VÊ.
             const items = getEventsForDate(dateStr); 
-            
             items.forEach(ev => {
                 addEditorItem(ev.desc, ev.details, ev.type);
             });
-
-            if(items.length === 0) addEditorItem(); // Adiciona um vazio se não tiver nada
+            if(items.length === 0) addEditorItem();
 
             document.getElementById('dayEditor').style.display = 'flex';
         }
 
-        function addEditorItem(desc='', details='', type='especial') {
+        function addEditorItem(desc='', details='', type='c-esp') {
             const div = document.createElement('div');
             div.className = 'editor-item';
+            
+            // Verifica qual option marcar
+            const sel = (val) => val === type ? 'selected' : '';
+
             div.innerHTML = `
                 <div class="editor-inputs">
-                    <input type="text" class="ed-input" value="${desc}" placeholder="Título (Ex: 19h Yoga)">
-                    <textarea class="ed-area" placeholder="Detalhes ocultos, notas, checklist...">${details || ''}</textarea>
+                    <div class="ed-row">
+                        <input type="text" class="ed-input" value="${desc}" placeholder="Título (Ex: 19h Yoga)">
+                        <select class="ed-select">
+                            <option value="c-esp" ${sel('c-esp')}>★ Especial</option>
+                            <option value="c-sh" ${sel('c-sh')}>♫ SH (Verde)</option>
+                            <option value="c-teca" ${sel('c-teca')}>☸ Teca (Roxo)</option>
+                            <option value="c-off" ${sel('c-off')}>💤 Recesso</option>
+                            <option value="c-fer" ${sel('c-fer')}>🎈 Feriado</option>
+                        </select>
+                    </div>
+                    <textarea class="ed-area" placeholder="Detalhes ocultos...">${details || ''}</textarea>
                 </div>
                 <div class="btn-del" onclick="this.parentElement.remove()"><i class="ph-bold ph-trash"></i></div>
             `;
@@ -200,74 +293,69 @@
             const items = [];
             document.querySelectorAll('.editor-item').forEach(el => {
                 const desc = el.querySelector('input').value.trim();
+                const type = el.querySelector('select').value;
                 const det = el.querySelector('textarea').value.trim();
-                if(desc) items.push({ desc: desc, details: det, type: getChipClass(desc) });
+                if(desc) items.push({ desc: desc, details: det, type: type });
             });
 
-            // Envia para API
             await fetch('/api/save_day', {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ date: currentEditingDate, events: items, user: currUser })
             });
 
             closeEditor();
-            await loadEvents(); // Recarrega para ver mudança
+            await loadEvents();
         }
-
         function closeEditor() { document.getElementById('dayEditor').style.display = 'none'; }
 
-        // --- CORE LOGIC ---
-        function getChipClass(desc) {
-            const t = desc.toLowerCase();
-            if(t.includes('sh') || t.includes('sound')) return 'c-sh';
-            if(t.includes('talk') || t.includes('meditation')) return 'c-teca';
-            return 'c-esp';
+        // --- DOWNLOAD IMAGE ---
+        function downloadImage() {
+            const node = document.querySelector('.main');
+            html2canvas(node, { scale: 2, backgroundColor: "#F8FAFC" }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Awake_Calendar_${MONTHS[currMonth]}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
         }
 
-        // Função auxiliar que recria a lógica de renderização para o Editor saber o que tem no dia
+        // --- CORE LOGIC ---
         function getEventsForDate(ds) {
             const dt = new Date(ds);
-            const wd = dt.getDay(); // 0=Dom
+            const wd = dt.getDay(); 
             const m = dt.getMonth() + 1;
-            
             let list = [];
             
-            // 1. Verifica DB (Prioridade Máxima)
+            // DB Priority
             const ex = dbEvents.find(e => e.data === ds);
-            
             if(ex) {
-                // Se existe exceção no banco, ELA É A VERDADE.
-                // Mas atenção: se fizemos save_day antes, os eventos múltiplos estão concatenados no 'descricao'
-                // ou salvos no 'detalhes' como JSON.
-                // Para simplificar: Se tiver 'detalhes' JSON, usa ele. Se não, usa descricao.
                 try {
                     const parsed = JSON.parse(ex.detalhes);
-                    if(Array.isArray(parsed)) return parsed; // Retorna lista salva
+                    if(Array.isArray(parsed)) return parsed;
                 } catch(e) {}
-                
-                if(ex.tipo === 'cancelado') return []; // Dia limpo
-                
-                // Se for evento simples da IA
+                if(ex.tipo === 'cancelado') return [];
                 list.push({ desc: ex.descricao, details: ex.detalhes, type: ex.tipo });
                 return list;
             }
 
-            // 2. Se não tem nada no banco, aplica regras padrão
+            // Standard
             if(FERIADOS[ds]) list.push({ desc: (FERIADOS[ds].tipo==='fer'?'🎈 ':'📅 ') + FERIADOS[ds].nome, type: FERIADOS[ds].tipo==='fer'?'c-fer':'c-com' });
-            
             if(wd===2 && ![1,7].includes(m)) list.push({ desc: "08h15 Talk Med. (Teca)", type: 'c-teca' });
-            
             if(wd===1) list.push({ desc: "19h SH (Haran)", type: 'c-sh' });
             if(wd===2) list.push({ desc: "19h SH (Karina)", type: 'c-sh' });
             if(wd===3) list.push({ desc: "19h SH (Pat)", type: 'c-sh' });
             if(wd===4) list.push({ desc: "19h SH (Pat)", type: 'c-sh' });
             if(wd===5) list.push({ desc: "10h SH (Haran)", type: 'c-sh' });
-            if(wd===6) {
-                list.push({ desc: "10h SH (Karina)", type: 'c-sh' });
-                list.push({ desc: "15h SH (Karina)", type: 'c-sh' });
-            }
+            if(wd===6) { list.push({ desc: "10h SH (Karina)", type: 'c-sh' }); list.push({ desc: "15h SH (Karina)", type: 'c-sh' }); }
             
             return list;
+        }
+
+        function getChipClass(desc) {
+            const t = desc.toLowerCase();
+            if(t.includes('sh') || t.includes('sound')) return 'c-sh';
+            if(t.includes('talk') || t.includes('meditation')) return 'c-teca';
+            return 'c-esp';
         }
 
         function render() {
@@ -288,7 +376,6 @@
                 const events = getEventsForDate(ds);
                 let html = "";
                 events.forEach(ev => {
-                    // Adiciona ícone se tiver detalhes
                     const hasDet = ev.details && ev.details.length > 0 ? 'has-details' : '';
                     const cls = ev.type || getChipClass(ev.desc);
                     html += `<div class="chip ${cls} ${hasDet}">${ev.desc}</div>`;
@@ -297,21 +384,15 @@
                 g.innerHTML += `<div class="day-card ${isT?'is-today':''}" onclick="openEditor('${ds}')"><div class="day-num">${d}</div>${html}</div>`;
             }
         }
-        function changeMonth(v) { currMonth+=v; if(currMonth>12)currMonth=1; if(currMonth<1)currMonth=12; render(); }
         
-        // CHAT (Simplificado)
-        async function sendMessage() {
-            const txt = document.getElementById('userInput').value;
-            if(!txt) return;
-            // ... (Código do chat igual ao anterior, apontando para /api/chat)
-            // Para economizar espaço aqui, use a função sendMessage do código anterior.
-            // A parte IMPORTANTE é o openEditor/saveEditor acima.
-            
-            // Mas para funcionar, vou colocar um fetch simples aqui:
-            document.getElementById('userInput').value = '';
-            await fetch('/api/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:txt, history:[], user:currUser})});
-            await loadEvents();
-        }
+        // Logs/Undo/Chat functions (Minified to save space, logic same as before)
+        async function loadLogs(){ try{ const r=await fetch('/api/get_logs'); const d=await r.json(); document.getElementById('logsList').innerHTML=d.map(l=>`<div class="log-item"><div><b>${l.user_name}</b> <span style="opacity:0.6">${l.action_summary}</span></div><button class="undo-btn" onclick="undo(${l.id})">DESFAZER</button></div>`).join(''); }catch{} }
+        async function undo(id){ if(confirm("Desfazer?")){ await fetch('/api/undo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({log_id:id})}); await loadEvents(); loadLogs(); } }
+        function switchTab(t){ document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active')); event.target.classList.add('active'); document.getElementById('chatView').style.display=t==='chat'?'flex':'none'; document.getElementById('historyView').style.display=t==='history'?'flex':'none'; if(t==='history')loadLogs(); }
+        async function sendMessage(){ const t=document.getElementById('userInput').value; if(!t)return; addBubble(t,'user'); document.getElementById('userInput').value=''; const l=addBubble('...','ai',true); try{ const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,history:chatContext,user:currUser})}); const d=await r.json(); document.getElementById(l).remove(); if(d.ok){ addBubble(d.reply,'ai'); chatContext.push({role:'user',content:t},{role:'assistant',content:d.reply}); if(d.actions_count>0) loadEvents(); }else addBubble('Erro','ai'); }catch{document.getElementById(l).remove();addBubble('Erro','ai');} }
+        function addBubble(h,t,r=false){ const b=document.getElementById('chatHistory'); const d=document.createElement('div'); d.className='msg-group'; d.innerHTML=`<div class="bubble bubble-${t}">${h}</div>`; if(r) d.id='temp'; b.appendChild(d); b.scrollTop=b.scrollHeight; return r?'temp':null; }
+        function changeMonth(v) { currMonth+=v; if(currMonth>12)currMonth=1; if(currMonth<1)currMonth=12; render(); }
+        function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.overlay').classList.toggle('active'); }
 
         init();
     </script>
