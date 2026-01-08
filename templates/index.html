@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Awake OS | Calendar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        :root {
+            --bg: #050505;
+            --surface: #0F0F0F;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-main: #FFFFFF;
+            --text-muted: #9CA3AF;
+            --primary: #10B981;
+            --accent: #D9890D;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg); color: var(--text-main); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; }
+
+        /* SIDEBAR */
+        .sidebar { width: 320px; background: #0A0A0A; border-right: 1px solid var(--border); padding: 30px; display: flex; flex-direction: column; z-index: 10; }
+        .logo { font-family: 'Manrope'; font-weight: 800; font-size: 20px; letter-spacing: -0.5px; margin-bottom: 40px; display: flex; align-items: center; gap: 10px; }
+        .logo span { color: var(--primary); }
+
+        .chat-box { flex-grow: 1; display: flex; flex-direction: column; justify-content: flex-end; }
+        .input-wrapper { position: relative; }
+        .cmd-input {
+            width: 100%; background: #111; border: 1px solid var(--border); color: white; padding: 15px; border-radius: 12px;
+            font-family: 'Inter'; font-size: 14px; outline: none; transition: 0.3s;
+        }
+        .cmd-input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
+        .send-btn { position: absolute; right: 10px; top: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
+        .send-btn:hover { color: var(--primary); }
+
+        /* STATUS CARD */
+        .status-card { background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.2); padding: 15px; border-radius: 10px; margin-bottom: 20px; display: none; animation: slideUp 0.3s ease; }
+        .status-title { font-size: 10px; text-transform: uppercase; color: var(--primary); font-weight: 700; margin-bottom: 5px; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* MAIN AREA */
+        .main-content { flex-grow: 1; padding: 40px; overflow-y: auto; position: relative; }
+        
+        /* HEADER */
+        .header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 30px; border-bottom: 1px solid var(--border); padding-bottom: 20px; }
+        .month-title { font-family: 'Manrope'; font-size: 48px; font-weight: 800; line-height: 1; }
+        .nav-controls { display: flex; gap: 10px; }
+        .nav-btn { background: var(--glass); border: 1px solid var(--border); color: white; width: 40px; height: 40px; border-radius: 8px; cursor: pointer; display: grid; place-items: center; transition: 0.2s; }
+        .nav-btn:hover { background: #222; border-color: var(--primary); }
+
+        /* CALENDAR GRID */
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 15px; }
+        .weekday { text-align: center; color: var(--text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+
+        /* DAY CARD */
+        .day-card {
+            background: var(--glass); border: 1px solid var(--border); border-radius: 14px; min-height: 140px; padding: 12px;
+            display: flex; flex-direction: column; transition: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); cursor: default;
+        }
+        .day-card:hover { transform: translateY(-5px); border-color: var(--primary); background: rgba(255,255,255,0.05); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        .day-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .day-num { font-family: 'Manrope'; font-weight: 700; font-size: 20px; color: #555; }
+        .is-today { border-color: var(--primary); background: rgba(16,185,129,0.03); }
+        .is-today .day-num { color: white; }
+        .today-badge { font-size: 9px; background: var(--primary); color: #000; padding: 2px 6px; border-radius: 10px; font-weight: 800; height: fit-content; }
+        
+        .day-past { opacity: 0.3; filter: grayscale(1); }
+        .other-month { opacity: 0.1; pointer-events: none; }
+
+        /* CHIPS */
+        .chip { font-size: 11px; padding: 6px 10px; border-radius: 6px; margin-bottom: 5px; font-weight: 500; border-left: 2px solid #444; background: rgba(255,255,255,0.03); color: #ccc; line-height: 1.3; }
+        .c-sh { border-color: #10B981; color: #A7F3D0; background: rgba(16, 185, 129, 0.1); }
+        .c-teca { border-color: #A78BFA; color: #E9D5FF; background: rgba(139, 92, 246, 0.1); }
+        .c-esp { border-color: #FBBF24; color: #FEF3C7; background: rgba(245, 158, 11, 0.1); }
+        .c-fer { border-color: #F87171; color: #FECACA; background: rgba(239, 68, 68, 0.1); }
+        .c-off { border-color: #6B7280; color: #9CA3AF; text-decoration: line-through; border-style: dashed; }
+
+        /* BACKGROUND GLOW */
+        .glow { position: fixed; width: 600px; height: 600px; background: var(--primary); filter: blur(250px); opacity: 0.08; border-radius: 50%; pointer-events: none; z-index: -1; }
+    </style>
+</head>
+<body>
+    <div class="glow" style="top: -20%; right: -10%;"></div>
+    <div class="glow" style="bottom: -20%; left: -10%; background: var(--accent);"></div>
+
+    <div class="sidebar">
+        <div class="logo"><i class="ph-fill ph-plant"></i> Awake<span>OS</span></div>
+        <div class="chat-box">
+            <div id="statusCard" class="status-card">
+                <div class="status-title">ATUALIZAÇÃO</div>
+                <div id="statusText" style="font-size:13px; color:white;"></div>
+            </div>
+            <div style="margin-bottom: 10px; font-size: 12px; color: #666;">AWAKE INTELLIGENCE</div>
+            <div class="input-wrapper">
+                <input type="text" id="cmdInput" class="cmd-input" placeholder="Ex: Dia 20 Workshop às 19h..." onkeypress="handleEnter(event)">
+                <button class="send-btn" onclick="sendCommand()"><i class="ph-bold ph-paper-plane-right"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div>
+                <div style="font-family: 'JetBrains Mono'; color: var(--primary); font-size: 12px; margin-bottom: 5px;">CALENDÁRIO COMERCIAL</div>
+                <div class="month-title" id="monthTitle">JANEIRO</div>
+            </div>
+            <div class="nav-controls">
+                <button class="nav-btn" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></button>
+                <button class="nav-btn" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></button>
+            </div>
+        </div>
+
+        <div class="calendar-grid" id="calendarGrid">
+            </div>
+    </div>
+
+    <script>
+        const MONTHS = ["", "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+        let currentMonth = new Date().getMonth() + 1;
+        let currentYear = 2026;
+        let eventsDB = [];
+
+        // Feriados Fixos
+        const FERIADOS = {
+            "2026-01-01": "Confraternização", "2026-01-25": "Aniv. SP", "2026-02-17": "Carnaval",
+            "2026-04-03": "Sexta Santa", "2026-04-21": "Tiradentes", "2026-05-01": "Trabalhador",
+            "2026-06-04": "Corpus Christi", "2026-07-09": "Rev. 32", "2026-09-07": "Independência",
+            "2026-10-12": "N. Sra. Aparecida", "2026-11-02": "Finados", "2026-11-15": "Proclamação",
+            "2026-11-20": "Consciência", "2026-12-25": "Natal"
+        };
+
+        async function init() {
+            await fetchEvents();
+            renderCalendar();
+        }
+
+        async function fetchEvents() {
+            try {
+                const res = await fetch('/api/get_events');
+                eventsDB = await res.json();
+                renderCalendar();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            document.getElementById('monthTitle').innerText = MONTHS[currentMonth];
+            grid.innerHTML = '';
+
+            // Headers
+            const days = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
+            days.forEach(d => grid.innerHTML += `<div class="weekday">${d}</div>`);
+
+            // Dates logic
+            const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+            const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+            const today = new Date(); // Real today for highlighting
+
+            // Empty slots before
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="day-card other-month"></div>`;
+            }
+
+            // Days
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(currentYear, currentMonth - 1, d);
+                const dateStr = dateObj.toISOString().split('T')[0];
+                const dayOfWeek = dateObj.getDay();
+                
+                let isToday = (d === today.getDate() && currentMonth === (today.getMonth()+1) && currentYear === today.getFullYear());
+                let isPast = dateObj < today;
+                
+                let contentHTML = "";
+                
+                // 1. Check DB Exception
+                const exception = eventsDB.find(e => e.data === dateStr);
+                
+                if (exception) {
+                    if (exception.tipo === 'recesso') contentHTML += `<div class="chip c-off">💤 ${exception.descricao}</div>`;
+                    else if (exception.tipo === 'cancelado') contentHTML += `<div class="chip c-off">Cancelado</div>`;
+                    else contentHTML += `<div class="chip c-esp">★ ${exception.descricao}</div>`;
+                } 
+                // 2. Check Holiday
+                else if (FERIADOS[dateStr]) {
+                    contentHTML += `<div class="chip c-fer">🎈 ${FERIADOS[dateStr]}</div>`;
+                }
+                // 3. Standard Schedule
+                else {
+                    if (dayOfWeek === 1 && ![1, 7].includes(currentMonth)) contentHTML += `<div class="chip c-teca">08h15 Talk Med.</div>`;
+                    
+                    let sh = "";
+                    if (dayOfWeek === 0) sh = "19h SH (Haran)";
+                    if (dayOfWeek === 1) sh = "19h SH (Karina)";
+                    if (dayOfWeek === 2) sh = "19h SH (Pat)";
+                    if (dayOfWeek === 3) sh = "19h SH (Pat)";
+                    if (dayOfWeek === 4) sh = "19h SH (Haran)";
+                    if (dayOfWeek === 5) sh = "10h SH (Karina)";
+                    
+                    if (sh) contentHTML += `<div class="chip c-sh">${sh}</div>`;
+                }
+
+                let badge = isToday ? '<div class="today-badge">HOJE</div>' : '';
+                let classes = `day-card ${isToday ? 'is-today' : ''} ${isPast && !isToday ? 'day-past' : ''}`;
+
+                grid.innerHTML += `
+                <div class="${classes}">
+                    <div class="day-header"><div class="day-num">${d}</div>${badge}</div>
+                    <div>${contentHTML}</div>
+                </div>`;
+            }
+        }
+
+        function changeMonth(delta) {
+            currentMonth += delta;
+            if (currentMonth > 12) { currentMonth = 1; } // Simple year logic for now
+            if (currentMonth < 1) { currentMonth = 12; }
+            renderCalendar();
+        }
+
+        async function sendCommand() {
+            const input = document.getElementById('cmdInput');
+            const text = input.value;
+            if (!text) return;
+
+            // Visual feedback
+            const statusCard = document.getElementById('statusCard');
+            const statusText = document.getElementById('statusText');
+            statusText.innerText = "Processando...";
+            statusCard.style.display = "block";
+
+            try {
+                const res = await fetch('/api/command', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, month: currentMonth })
+                });
+                const data = await res.json();
+                
+                if (data.ok) {
+                    statusText.innerHTML = `✅ <b>${data.date}</b> atualizado para:<br>${data.desc}`;
+                    input.value = "";
+                    await fetchEvents(); // Refresh calendar
+                } else {
+                    statusText.innerText = `❌ ${data.msg}`;
+                }
+            } catch (e) {
+                statusText.innerText = "Erro ao conectar.";
+            }
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') sendCommand();
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
