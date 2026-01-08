@@ -1,6 +1,5 @@
 import os
 import json
-import re
 import pytz
 from flask import Flask, render_template, request, jsonify
 from supabase import create_client
@@ -17,47 +16,37 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 try:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
     client = Groq(api_key=GROQ_API_KEY)
-except Exception as e:
-    print(f"Erro de Configuração: {e}")
+except: pass
 
 SP_TZ = pytz.timezone('America/Sao_Paulo')
 
 @app.route('/')
-def home():
-    return render_template('index.html')
+def home(): return render_template('index.html')
 
 @app.route('/api/get_events', methods=['GET'])
 def get_events():
-    try:
-        response = supabase.table("excecoes").select("*").execute()
-        return jsonify(response.data)
-    except:
-        return jsonify([])
+    try: return jsonify(supabase.table("excecoes").select("*").execute().data)
+    except: return jsonify([])
 
 @app.route('/api/get_logs', methods=['GET'])
 def get_logs():
-    try:
-        response = supabase.table("audit_logs").select("*").order("created_at", desc=True).limit(50).execute()
-        return jsonify(response.data)
-    except:
-        return jsonify([])
+    try: return jsonify(supabase.table("audit_logs").select("*").order("created_at", desc=True).limit(50).execute().data)
+    except: return jsonify([])
 
 @app.route('/api/undo', methods=['POST'])
 def undo():
     d = request.json
     try:
         log = supabase.table("audit_logs").select("*").eq("id", d['log_id']).execute().data
-        if not log:
-            return jsonify({"ok": False})
+        if not log: return jsonify({"ok":False})
         prev = log[0]['previous_state']
         if prev:
-            clean = {k: v for k, v in prev.items() if k not in ['id', 'created_at']}
+            clean = {k:v for k,v in prev.items() if k not in ['id','created_at']}
             supabase.table("excecoes").upsert(clean).execute()
         else:
             supabase.table("excecoes").delete().eq("data", log[0]['target_date']).execute()
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "msg": str(e)})
+        return jsonify({"ok":True})
+    except Exception as e: return jsonify({"ok":False,"msg":str(e)})
 
 @app.route('/api/save_day', methods=['POST'])
 def save_day():
@@ -67,187 +56,122 @@ def save_day():
     try:
         exist = supabase.table("excecoes").select("*").eq("data", dt).execute()
         prev = exist.data[0] if exist.data else None
-
+        
         if not evs:
-            supabase.table("excecoes").upsert({
-                "data": dt, "tipo": "cancelado", "descricao": "Limpo", "detalhes": ""
-            }).execute()
+            supabase.table("excecoes").upsert({"data":dt, "tipo":"cancelado", "descricao":"Limpo", "detalhes":""}).execute()
         else:
+            # Monta descrição visual para legado
             visuais = []
             for e in evs:
                 if e.get('type') in ['c-fer', 'c-com', 'c-off']:
                     visuais.append(e.get('title'))
                 else:
                     visuais.append(f"{e.get('time','')} {e.get('title','')} ({e.get('instructor','')})")
-
+            
             supabase.table("excecoes").upsert({
-                "data": dt,
-                "tipo": evs[0].get('type', 'especial'),
-                "descricao": " | ".join(visuais),
+                "data": dt, "tipo": evs[0].get('type','especial'), 
+                "descricao": " | ".join(visuais), 
                 "detalhes": json.dumps(evs)
             }).execute()
+            
+        supabase.table("audit_logs").insert({"user_name":d.get('user','Manual'),"target_date":dt,"action_summary":"Edição Manual","previous_state":prev}).execute()
+        return jsonify({"ok":True})
+    except Exception as e: return jsonify({"ok":False,"msg":str(e)})
 
-        supabase.table("audit_logs").insert({
-            "user_name": d.get('user', 'Manual'),
-            "target_date": dt,
-            "action_summary": "Edição Manual",
-            "previous_state": prev
-        }).execute()
-        return jsonify({"ok": True})
-    except Exception as e:
-        return jsonify({"ok": False, "msg": str(e)})
-
-# --- HELPER: EXTRAÇÃO ROBUSTA DE JSON ---
-def extract_json_from_text(text):
-    """
-    Tenta encontrar um objeto JSON válido dentro de uma string de texto.
-    Resolve o problema da IA adicionar texto antes ou depois do JSON.
-    """
-    try:
-        # Tenta parse direto
-        return json.loads(text)
-    except json.JSONDecodeError:
-        try:
-            # Busca o padrão JSON {...} usando Regex (dotall para pegar quebras de linha)
-            match = re.search(r'\{.*\}', text, re.DOTALL)
-            if match:
-                json_str = match.group(0)
-                return json.loads(json_str)
-        except Exception:
-            pass
-    return None
-
-# --- CÉREBRO DA IA (MODO DUAL: GESTORA + EXPERT) ---
+# --- INTELIGÊNCIA SIMPLIFICADA (ESTRATÉGIA DO PIPE | ) ---
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    if not GROQ_API_KEY:
-        return jsonify({"ok": False, "reply": "Erro API: Chave não configurada."})
-    
+    if not GROQ_API_KEY: return jsonify({"ok": False, "reply": "Erro API."})
     d = request.json
-    user_msg = d['text']
-    history = d.get('history', [])
-    user_name = d.get('user', 'Usuário')
-
+    
     hoje = datetime.now(SP_TZ).strftime("%Y-%m-%d (%A)")
-
-    # 1. Recupera o que já mudou no calendário
+    
     try:
-        current_data = supabase.table("excecoes").select("data, descricao").execute().data
-        db_context = json.dumps(current_data)
-    except:
-        db_context = "[]"
+        db_data = supabase.table("excecoes").select("data, descricao").execute().data
+        db_context = json.dumps(db_data)
+    except: db_context = "[]"
 
-    # 2. O PROMPT MESTRE
+    # PROMPT: Pedimos para a IA usar o formato "HORA|TITULO|INSTRUTOR"
+    # É muito difícil ela errar isso.
     sys_prompt = f"""
-    Você é a IA do "Awake Calendar 2026". Hoje é {hoje}.
-
-    >>> SUAS DUAS FUNÇÕES:
-    1. **Gestora de Agenda (PRIORIDADE MÁXIMA):** Se o usuário falar sobre datas, eventos, aulas ou horários, você deve gerenciar o calendário com precisão absoluta.
-    2. **Assistente Expert:** Se o usuário perguntar sobre filosofia, bem-estar, textos para posts ou dúvidas gerais, use sua inteligência ilimitada para ajudar, mantendo um tom profissional e acolhedor.
-
-    >>> CONHECIMENTO DO TEMPO (MATRIZ FIXA):
+    Você é a IA do "Awake Calendar 2026". Hoje: {hoje}.
+    
+    >>> AGENDA PADRÃO:
     - Seg: 19h SH (Haran)
     - Ter: 08h15 Talk Med. (Teca) | 19h SH (Karina)
     - Qua/Qui: 19h SH (Pat)
     - Sex: 10h SH (Haran)
     - Sáb: 10h SH (Karina) | 15h SH (Karina)
-    *Nota: SH = Sound Healing. Feriados e Datas Comemorativas já estão carregados no visual.*
-
-    >>> CONTEXTO ATUAL (ALTERAÇÕES NO BANCO):
-    {db_context}
-
-    >>> COMO AGIR:
-    - O usuário perguntou algo aleatório? ("Como meditar?") -> Responda no 'reply' e mande 'actions': [].
-    - O usuário mandou alterar a agenda? -> Gere o JSON em 'actions'.
-    - O usuário perguntou da agenda? ("O que tem dia 21?") -> Consulte a Matriz Fixa + Contexto Atual e responda no 'reply'.
-
-    >>> FORMATO DE AÇÃO (Somente se houver alteração):
+    
+    >>> MUDANÇAS NO BANCO: {db_context}
+    
+    >>> COMANDOS:
+    1. Responda dúvidas normalmente.
+    2. Se for para ALTERAR a agenda, use o JSON abaixo.
+    
+    >>> IMPORTANTE SOBRE DADOS (Regra do Separador):
+    Para preencher o campo 'content', use o formato: "HORA|TITULO|INSTRUTOR".
+    Exemplo: "19:00|Yoga|Ana" ou "08:00|Meditação|Gui".
+    Se for feriado ou cancelamento, coloque apenas o NOME.
+    
+    >>> JSON OUTPUT:
     {{
-        "date": "YYYY-MM-DD",
-        "action": "create" (para criar aula/experiência), "cancel" (para cancelar dia), "info" (para feriados/avisos sem hora),
-        "type": "c-sh" (Verde/SH), "c-teca" (Roxo/Talk), "c-esp" (Amarelo/Geral), "c-fer" (Feriado), "c-off" (Recesso),
-        "time": "HH:MM" (obrigatório para create),
-        "title": "Nome" (obrigatório),
-        "instructor": "Nome" (obrigatório para create),
-        "details": "Texto rico/HTML se necessário"
-    }}
-
-    >>> RESPOSTA JSON OBRIGATÓRIA:
-    {{
-        "reply": "Sua resposta falada aqui...",
-        "actions": [ ... lista de ações ou vazio ... ]
+        "reply": "Resposta...",
+        "actions": [
+            {{
+                "date": "YYYY-MM-DD",
+                "action": "create" (ou "cancel"),
+                "type": "c-sh" (ou c-teca, c-esp, c-fer, c-off),
+                "content": "HORA|TITULO|INSTRUTOR"
+            }}
+        ]
     }}
     """
 
     try:
-        comp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "system", "content": sys_prompt}] + history + [{"role": "user", "content": user_msg}],
-            response_format={"type": "json_object"},
-            temperature=0.3
-        )
-        
-        raw_content = comp.choices[0].message.content
-        print(f"RAW AI RESPONSE: {raw_content}") # Log para debug no terminal
-
-        # 3. EXTRAÇÃO ROBUSTA DE JSON (A CORREÇÃO PRINCIPAL)
-        ai_resp = extract_json_from_text(raw_content)
-
-        if ai_resp is None:
-             # Fallback caso a extração falhe totalmente, evita o erro genérico
-             return jsonify({"ok": True, "reply": "Entendi, mas tive um pequeno problema técnico ao processar sua solicitação. Poderia repetir de forma mais direta?", "actions_count": 0})
-
+        comp = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role":"system","content":sys_prompt}]+d.get('history',[])+[{"role":"user","content":d['text']}], response_format={"type":"json_object"}, temperature=0.2)
+        ai_resp = json.loads(comp.choices[0].message.content)
         cnt = 0
-
-        for a in ai_resp.get('actions', []):
+        
+        for a in ai_resp.get('actions',[]):
             try:
                 target_date = a['date']
-                act = a.get('action', 'create')
-
-                # Prepara Payload
+                act = a.get('action')
+                content = a.get('content', '')
+                v_type = a.get('type', 'c-esp')
+                
+                # PYTHON FAZ O TRABALHO PESADO DE ESTRUTURAR
                 if act == 'cancel':
-                    payload = {"data": target_date, "tipo": "cancelado", "descricao": "Cancelado", "detalhes": ""}
+                    payload = {"data":target_date, "tipo":"cancelado", "descricao":"Cancelado", "detalhes":""}
                 else:
-                    # Define tipo visual
-                    v_type = a.get('type', 'c-esp')
-
-                    # Se for feriado/aviso, não precisa de hora/instrutor no visual
-                    if act == 'info' or v_type in ['c-fer', 'c-com', 'c-off']:
-                        desc_str = a.get('title')
-                        struct = [{"title": a.get('title'), "type": v_type, "details": a.get('details', '')}]
+                    # Quebra a string "19:00|Yoga|Pat"
+                    parts = content.split('|')
+                    
+                    if len(parts) >= 3:
+                        # Formato completo (Experiência)
+                        time, title, instructor = parts[0].strip(), parts[1].strip(), parts[2].strip()
+                        struct = [{"time": time, "title": title, "instructor": instructor, "type": v_type, "details": ""}]
+                        desc_str = f"{time} {title} ({instructor})"
                     else:
-                        # Evento completo
-                        desc_str = f"{a.get('time')} {a.get('title')} ({a.get('instructor')})"
-                        struct = [{
-                            "time": a.get('time', ''), "title": a.get('title', ''),
-                            "instructor": a.get('instructor', ''), "type": v_type,
-                            "details": a.get('details', '')
-                        }]
+                        # Formato simples (Feriado/Aviso)
+                        title = parts[0].strip()
+                        struct = [{"time": "", "title": title, "instructor": "", "type": v_type, "details": ""}]
+                        desc_str = title
 
                     payload = {
                         "data": target_date, "tipo": v_type,
-                        "descricao": desc_str, "detalhes": json.dumps(struct)
+                        "descricao": desc_str, 
+                        "detalhes": json.dumps(struct) # Salva estruturado para o Frontend
                     }
 
-                # Executa no Banco
                 exist = supabase.table("excecoes").select("*").eq("data", target_date).execute()
                 prev = exist.data[0] if exist.data else None
                 supabase.table("excecoes").upsert(payload).execute()
-                supabase.table("audit_logs").insert({
-                    "user_name": user_name,
-                    "target_date": target_date,
-                    "action_summary": f"IA: {a.get('title', '')}",
-                    "previous_state": prev
-                }).execute()
-                cnt += 1
-            except Exception as e:
-                print(f"Erro ao processar ação: {e}")
-                pass
+                supabase.table("audit_logs").insert({"user_name":d.get('user','Usuario'),"target_date":target_date,"action_summary":f"IA: {act}","previous_state":prev}).execute()
+                cnt+=1
+            except Exception as loop_err: print(f"Erro loop: {loop_err}")
+            
+        return jsonify({"ok":True, "reply": ai_resp.get("reply", "Feito."), "actions_count":cnt})
+    except Exception as e: return jsonify({"ok":False,"reply":str(e)})
 
-        return jsonify({"ok": True, "reply": ai_resp.get("reply", "Feito."), "actions_count": cnt})
-    except Exception as e:
-        print(f"Erro Crítico Chat: {e}")
-        return jsonify({"ok": False, "reply": f"Erro interno: {str(e)}"})
-
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == '__main__': app.run(debug=True)
