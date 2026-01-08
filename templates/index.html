@@ -5,13 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Awake OS | Enterprise</title>
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
-        /* --- DESIGN SYSTEM (AUTO DARK MODE) --- */
+        /* DESIGN SYSTEM */
         :root {
             --bg-app: #F8FAFC; --bg-sidebar: #0F172A; --bg-card: #FFFFFF;
             --txt-primary: #0F172A; --txt-secondary: #64748B; --txt-inverse: #F8FAFC;
@@ -19,84 +17,67 @@
             --brand: #10B981; --brand-glow: rgba(16, 185, 129, 0.3);
             --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         }
-
-        /* Detecta Dark Mode do Sistema */
         @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-app: #0B1120; /* Quase preto */
-                --bg-card: #1E293B; /* Cinza escuro */
-                --txt-primary: #F1F5F9;
-                --txt-secondary: #94A3B8;
-                --border-light: #334155;
-            }
+            :root { --bg-app: #0B1120; --bg-card: #1E293B; --txt-primary: #F1F5F9; --txt-secondary: #94A3B8; --border-light: #334155; }
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
 
-        /* --- LOGIN SCREEN --- */
+        /* LOGIN SCREEN (SIMPLES) */
         #auth-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: var(--bg-app); z-index: 9999;
-            display: flex; justify-content: center; align-items: center;
-            flex-direction: column; gap: 20px;
+            display: flex; justify-content: center; align-items: center; flex-direction: column;
         }
-        .google-btn {
-            background: white; color: #333; border: 1px solid #ddd;
-            padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;
-            display: flex; align-items: center; gap: 10px; font-size: 16px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: 0.2s;
-        }
-        .google-btn:hover { background: #f9f9f9; transform: translateY(-1px); }
+        .login-box { background: var(--bg-card); padding: 40px; border-radius: 20px; width: 350px; text-align: center; border: 1px solid var(--border-light); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        .login-input { width: 100%; padding: 14px; margin: 20px 0; border: 1px solid var(--border-light); border-radius: 8px; font-size: 16px; background: var(--bg-app); color: var(--txt-primary); outline: none; }
+        .login-btn { width: 100%; padding: 14px; background: var(--brand); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .login-btn:hover { filter: brightness(1.1); }
 
-        /* --- LAYOUT & RESPONSIVIDADE --- */
-        .sidebar {
-            width: 400px; background-color: var(--bg-sidebar); color: var(--txt-inverse);
-            display: flex; flex-direction: column; border-right: 1px solid var(--border-dark);
-            z-index: 50; transition: transform 0.3s ease;
-        }
-        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        /* SIDEBAR & TABS */
+        .sidebar { width: 400px; background-color: var(--bg-sidebar); color: var(--txt-inverse); display: flex; flex-direction: column; border-right: 1px solid var(--border-dark); z-index: 50; transition: transform 0.3s ease; }
+        
+        .brand-section { padding: 20px; border-bottom: 1px solid var(--border-dark); background: rgba(0,0,0,0.2); }
+        .user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .avatar { width: 32px; height: 32px; background: var(--brand); border-radius: 8px; display: grid; place-items: center; font-weight: 700; color: white; }
+        
+        .tabs { display: flex; gap: 5px; background: #1E293B; padding: 4px; border-radius: 8px; }
+        .tab { flex: 1; text-align: center; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 6px; color: #94A3B8; transition: 0.2s; }
+        .tab.active { background: #334155; color: white; }
 
-        /* Mobile Adjustments */
-        .menu-toggle { display: none; font-size: 24px; cursor: pointer; color: var(--txt-primary); }
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
+        /* VIEWS */
+        .view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        #historyView { display: none; }
 
-        @media (max-width: 768px) {
-            .sidebar { position: fixed; height: 100%; left: 0; top: 0; transform: translateX(-100%); width: 85%; }
-            .sidebar.active { transform: translateX(0); }
-            .menu-toggle { display: block; margin-right: 16px; }
-            .overlay.active { display: block; }
-            
-            .grid-header { display: none; } /* Esconde dias da semana no mobile */
-            .grid-body { grid-template-columns: 1fr; gap: 10px; } /* Vira lista vertical */
-            .top-bar { padding: 16px; }
-            .date-display h1 { font-size: 20px; }
-        }
-
-        /* --- COMPONENTS --- */
-        .brand-section { padding: 24px; border-bottom: 1px solid var(--border-dark); background: linear-gradient(180deg, rgba(15,23,42,1) 0%, rgba(15,23,42,0) 100%); display: flex; justify-content: space-between; align-items: center;}
-        .logo { font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 12px; color: white; }
-        .logo-icon { width: 32px; height: 32px; background: var(--brand); border-radius: 8px; display: grid; place-items: center; color: white; box-shadow: 0 0 20px var(--brand-glow); }
-
+        /* Chat */
         .chat-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
         .bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; max-width: 90%; white-space: pre-wrap; }
         .bubble-ai { background: #1E293B; color: #E2E8F0; border: 1px solid #334155; }
         .bubble-user { align-self: flex-end; background: var(--brand); color: #064E3B; font-weight: 600; margin-left: auto; }
-
+        
         .input-area { padding: 20px; background: var(--bg-sidebar); border-top: 1px solid var(--border-dark); }
-        .input-container { position: relative; background: #1E293B; border-radius: 12px; border: 1px solid #334155; display: flex; align-items: flex-end; min-height: 50px; }
+        .input-container { background: #1E293B; border-radius: 12px; border: 1px solid #334155; display: flex; align-items: flex-end; min-height: 50px; }
         .chat-input { width: 100%; background: transparent; border: none; color: white; padding: 14px; font-size: 14px; outline: none; resize: none; overflow-y: hidden; height: 50px; max-height: 120px; font-family: 'Inter', sans-serif; }
         .send-btn { background: var(--brand); border: none; width: 32px; height: 32px; border-radius: 6px; margin: 0 8px 8px 0; cursor: pointer; color: #022c22; display: grid; place-items: center; flex-shrink: 0; }
 
-        /* Calendar */
-        .top-bar { padding: 24px 40px; background: var(--bg-card); border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
+        /* History Logs */
+        .logs-list { flex: 1; overflow-y: auto; padding: 0; }
+        .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; align-items: flex-start; }
+        .log-meta { flex: 1; }
+        .log-user { font-size: 13px; font-weight: 700; color: white; }
+        .log-desc { font-size: 12px; color: #94A3B8; margin-top: 2px; }
+        .undo-btn { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; }
+
+        /* Main Calendar */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+        .top-bar { padding: 20px 30px; background: var(--bg-card); border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
         .nav-buttons { display: flex; gap: 4px; }
         .nav-btn { width: 36px; height: 36px; border: 1px solid var(--border-light); background: var(--bg-app); border-radius: 6px; cursor: pointer; color: var(--txt-secondary); display: grid; place-items: center; }
 
         .calendar-scroll { flex: 1; overflow-y: auto; padding: 20px; }
         .grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 10px; }
         .weekday { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-secondary); text-transform: uppercase; }
-        
         .grid-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding-bottom: 40px; }
 
         .day-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; min-height: 140px; padding: 12px; display: flex; flex-direction: column; position: relative; }
@@ -104,8 +85,20 @@
         .is-today { border: 2px solid var(--brand); }
         .is-today .day-num { color: var(--brand); }
         .chip { font-size: 11px; padding: 6px 8px; border-radius: 6px; font-weight: 600; margin-bottom: 4px; border-left: 3px solid transparent; background: #F1F5F9; color: #334155; }
+
+        /* Mobile */
+        .menu-toggle { display: none; font-size: 24px; cursor: pointer; color: var(--txt-primary); margin-right: 15px; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; height: 100%; left: 0; top: 0; transform: translateX(-100%); width: 85%; }
+            .sidebar.active { transform: translateX(0); }
+            .menu-toggle { display: block; }
+            .overlay.active { display: block; }
+            .grid-header { display: none; } 
+            .grid-body { grid-template-columns: 1fr; }
+        }
         
-        /* Cores dos Chips Adaptativas */
+        /* Dark Mode Colors Chips */
         @media (prefers-color-scheme: dark) {
             .chip { background: #334155; color: #E2E8F0; }
             .c-sh { background: #064E3B; color: #A7F3D0; border-color: #10B981; }
@@ -119,43 +112,51 @@
             .c-off { background: #F1F5F9; color: #64748B; border-color: #CBD5E1; text-decoration: line-through; }
         }
 
-        .toast { position: fixed; top: 20px; right: 20px; background: var(--bg-card); padding: 15px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-left: 4px solid var(--brand); z-index: 100; color: var(--txt-primary); }
+        .toast { position: fixed; top: 20px; right: 20px; background: var(--bg-card); padding: 15px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-left: 4px solid var(--brand); z-index: 100; color: var(--txt-primary); display:none; }
     </style>
 </head>
 <body>
 
     <div id="auth-screen">
-        <div class="logo-icon" style="width:60px; height:60px; font-size:30px;"><i class="ph-bold ph-calendar-check"></i></div>
-        <h2 style="margin-top:-10px;">Awake OS</h2>
-        <p style="color:var(--txt-secondary); margin-bottom: 20px;">Acesso restrito a equipe autorizada.</p>
-        <button class="google-btn" onclick="signInGoogle()">
-            <i class="ph-bold ph-google-logo"></i> Entrar com Google
-        </button>
+        <div class="login-box">
+            <div style="font-size:40px; color:var(--brand); margin-bottom:10px;"><i class="ph-bold ph-calendar-check"></i></div>
+            <h2 style="margin:0; color:var(--txt-primary);">Identificação</h2>
+            <p style="color:var(--txt-secondary); font-size:14px;">Quem está acessando?</p>
+            <input type="text" id="nameInput" class="login-input" placeholder="Seu Nome (Ex: Teca)">
+            <button class="login-btn" onclick="doLogin()">ACESSAR SISTEMA</button>
+        </div>
     </div>
 
     <div class="overlay" onclick="toggleMenu()"></div>
-    <div class="toast" id="toast" style="display:none;"></div>
+    <div class="toast" id="toast"></div>
 
     <div class="sidebar" id="sidebar">
         <div class="brand-section">
-            <div class="logo">
-                <div class="logo-icon"><i class="ph-bold ph-calendar-check"></i></div> Awake OS
+            <div class="user-info">
+                <div class="avatar" id="avatar">?</div>
+                <div style="font-weight:700; font-size:14px;"><span id="userNameDisplay">Visitante</span></div>
             </div>
-            <i class="ph-bold ph-x" onclick="toggleMenu()" style="cursor:pointer; display:none;" class="close-menu"></i>
-        </div>
-
-        <div class="chat-scroll" id="chatHistory">
-            <div class="msg-group">
-                <div class="msg-role">Assistente</div>
-                <div class="bubble bubble-ai">Olá! Estou pronta.</div>
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('chat')">CHAT IA</div>
+                <div class="tab" onclick="switchTab('history')">HISTÓRICO</div>
             </div>
         </div>
 
-        <div class="input-area">
-            <div class="input-container">
-                <textarea id="userInput" class="chat-input" placeholder="Digite..." rows="1"></textarea>
-                <button class="send-btn" onclick="sendMessage()"><i class="ph-bold ph-paper-plane-right"></i></button>
+        <div id="chatView" class="view">
+            <div class="chat-scroll" id="chatHistory">
+                <div class="msg-group"><div class="bubble bubble-ai">Olá! Pode falar, estou ouvindo.</div></div>
             </div>
+            <div class="input-area">
+                <div class="input-container">
+                    <textarea id="userInput" class="chat-input" placeholder="Digite..." rows="1"></textarea>
+                    <button class="send-btn" onclick="sendMessage()"><i class="ph-bold ph-paper-plane-right"></i></button>
+                </div>
+                <div style="font-size:10px; color:#475569; margin-top:10px; text-align:center;">Shift+Enter pula linha</div>
+            </div>
+        </div>
+
+        <div id="historyView" class="view">
+            <div class="logs-list" id="logsList"></div>
         </div>
     </div>
 
@@ -163,187 +164,172 @@
         <div class="top-bar">
             <div style="display:flex; align-items:center;">
                 <i class="ph-bold ph-list menu-toggle" onclick="toggleMenu()"></i>
-                <div class="date-display">
-                    <h1><span id="monthTitle">JAN</span> <span style="font-size:0.6em; opacity:0.6;">2026</span></h1>
+                <div style="font-weight:800; font-size:20px; color:var(--txt-primary);">
+                    <span id="monthTitle">JAN</span> <span style="font-size:0.6em; opacity:0.6;">2026</span>
                 </div>
             </div>
             <div class="nav-buttons">
                 <button class="nav-btn" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></button>
                 <button class="nav-btn" onclick="changeMonth(0)"><i class="ph-bold ph-house"></i></button>
                 <button class="nav-btn" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></button>
-                <button class="nav-btn" onclick="signOut()" title="Sair"><i class="ph-bold ph-sign-out"></i></button>
+                <button class="nav-btn" onclick="logout()" title="Sair"><i class="ph-bold ph-sign-out"></i></button>
             </div>
         </div>
-
         <div class="calendar-scroll">
-            <div class="grid-header">
-                <div class="weekday">DOM</div><div class="weekday">SEG</div><div class="weekday">TER</div>
-                <div class="weekday">QUA</div><div class="weekday">QUI</div><div class="weekday">SEX</div><div class="weekday">SÁB</div>
-            </div>
+            <div class="grid-header"><div class="weekday">DOM</div><div class="weekday">SEG</div><div class="weekday">TER</div><div class="weekday">QUA</div><div class="weekday">QUI</div><div class="weekday">SEX</div><div class="weekday">SÁB</div></div>
             <div class="grid-body" id="grid"></div>
         </div>
     </div>
 
     <script>
-        // CONFIGURAÇÃO SUPABASE (Vinda do Flask)
-        const supabaseUrl = '{{ supabase_url }}';
-        const supabaseKey = '{{ supabase_key }}';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
         const MONTHS = ["", "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
         let currMonth = new Date().getMonth() + 1;
         if(new Date().getFullYear() !== 2026) currMonth = 1;
         let dbEvents = [];
         let chatContext = [];
+        let currUser = localStorage.getItem('awake_user');
 
-        const FERIADOS = {
-            "2026-01-01": "Confraternização", "2026-01-25": "Aniv. SP", "2026-02-17": "Carnaval", "2026-04-03": "Sexta Santa", "2026-04-21": "Tiradentes", "2026-05-01": "Trabalhador", "2026-06-04": "Corpus Christi", "2026-07-09": "Rev. 32", "2026-09-07": "Independência", "2026-10-12": "N. Sra. Aparecida", "2026-11-02": "Finados", "2026-11-15": "Proclamação", "2026-11-20": "Consciência", "2026-12-25": "Natal"
-        };
+        const FERIADOS = { "2026-01-01": "Confraternização", "2026-01-25": "Aniv. SP", "2026-02-17": "Carnaval", "2026-04-03": "Sexta Santa", "2026-04-21": "Tiradentes", "2026-05-01": "Trabalhador", "2026-06-04": "Corpus Christi", "2026-07-09": "Rev. 32", "2026-09-07": "Independência", "2026-10-12": "N. Sra. Aparecida", "2026-11-02": "Finados", "2026-11-15": "Proclamação", "2026-11-20": "Consciência", "2026-12-25": "Natal" };
 
-        // --- AUTHENTICATION ---
-        async function checkUser() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                document.getElementById('auth-screen').style.display = 'none';
-                init();
-            } else {
-                document.getElementById('auth-screen').style.display = 'flex';
-            }
+        // AUTH
+        if(currUser) { document.getElementById('auth-screen').style.display='none'; setupUser(); }
+        function doLogin() {
+            const n = document.getElementById('nameInput').value.trim();
+            if(!n) return alert("Digite um nome!");
+            localStorage.setItem('awake_user', n);
+            currUser = n;
+            document.getElementById('auth-screen').style.display='none';
+            setupUser();
         }
-
-        async function signInGoogle() {
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: { redirectTo: window.location.href }
-            });
+        function setupUser() {
+            document.getElementById('userNameDisplay').innerText = currUser;
+            document.getElementById('avatar').innerText = currUser[0].toUpperCase();
+            init();
         }
+        function logout() { localStorage.removeItem('awake_user'); window.location.reload(); }
 
-        async function signOut() {
-            await supabase.auth.signOut();
-            window.location.reload();
-        }
-
-        // --- CORE ---
+        // CORE
         async function init() {
             const ta = document.getElementById('userInput');
-            ta.addEventListener('input', function() {
-                this.style.height='auto'; this.style.height=(this.scrollHeight)+'px';
-                if(this.value==='') this.style.height='50px';
-            });
-            ta.addEventListener('keydown', function(e) {
-                if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-            });
-
+            ta.addEventListener('input', function(){ this.style.height='auto'; this.style.height=(this.scrollHeight)+'px'; if(!this.value) this.style.height='50px'; });
+            ta.addEventListener('keydown', function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
             await loadEvents();
         }
 
         async function loadEvents() {
             try {
-                const res = await fetch('/api/get_events');
-                dbEvents = await res.json();
+                const r = await fetch('/api/get_events');
+                dbEvents = await r.json();
                 render();
-            } catch(e) {}
+            } catch(e){}
         }
 
+        // TABS & LOGS
+        function switchTab(t) {
+            document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('chatView').style.display = t==='chat'?'flex':'none';
+            document.getElementById('historyView').style.display = t==='history'?'flex':'none';
+            if(t==='history') loadLogs();
+        }
+
+        async function loadLogs() {
+            const l = document.getElementById('logsList');
+            l.innerHTML = '<div style="padding:20px;text-align:center;color:#666">Carregando...</div>';
+            try {
+                const r = await fetch('/api/get_logs');
+                const d = await r.json();
+                l.innerHTML = '';
+                d.forEach(log => {
+                    const date = new Date(log.created_at).toLocaleString('pt-BR');
+                    l.innerHTML += `<div class="log-item"><div class="log-meta"><div class="log-user">${log.user_name}</div><div class="log-desc">${log.action_summary}</div><div style="font-size:10px;opacity:0.5">${date}</div></div><button onclick="undo(${log.id})" class="undo-btn">DESFAZER</button></div>`;
+                });
+            } catch(e){ l.innerHTML = 'Erro ao carregar logs'; }
+        }
+
+        async function undo(id) {
+            if(!confirm("Desfazer essa ação?")) return;
+            await fetch('/api/undo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({log_id:id}) });
+            loadLogs(); loadEvents(); showToast("Ação desfeita!");
+        }
+
+        // CHAT
         async function sendMessage() {
-            const input = document.getElementById('userInput');
-            const text = input.value.trim();
-            if(!text) return;
-            addBubble(text, 'user');
-            input.value = ""; input.style.height = '50px';
+            const inp = document.getElementById('userInput');
+            const txt = inp.value.trim();
+            if(!txt) return;
+            
+            addBubble(txt, 'user');
+            inp.value = ""; inp.style.height='50px';
             const loadId = addBubble("Pensando...", 'ai', true);
 
             try {
-                const res = await fetch('/api/chat', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ text: text, history: chatContext })
+                const r = await fetch('/api/chat', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ text: txt, history: chatContext, user: currUser })
                 });
-                const data = await res.json();
+                const d = await r.json();
                 document.getElementById(loadId).remove();
-                
-                if(data.ok) {
-                    addBubble(data.reply, 'ai');
-                    chatContext.push({ "role": "user", "content": text });
-                    chatContext.push({ "role": "assistant", "content": data.reply });
-                    if(data.actions_count > 0) {
-                        showToast("Sucesso", `${data.actions_count} alteração(ões)`);
-                        await loadEvents();
-                    }
-                } else { addBubble("Erro: " + data.reply, 'ai'); }
+
+                if(d.ok) {
+                    addBubble(d.reply, 'ai');
+                    chatContext.push({"role":"user","content":txt});
+                    chatContext.push({"role":"assistant","content":d.reply});
+                    if(d.actions_count > 0) { showToast(`${d.actions_count} alteração(ões)`); await loadEvents(); }
+                } else { addBubble("Erro: "+d.reply, 'ai'); }
             } catch(e) { document.getElementById(loadId).remove(); addBubble("Erro conexão", 'ai'); }
         }
 
-        function addBubble(html, type, returnId=false) {
-            const box = document.getElementById('chatHistory');
+        function addBubble(h, t, rid=false) {
+            const b = document.getElementById('chatHistory');
             const d = document.createElement('div');
-            d.innerHTML = type==='ai' ? `<div style="font-size:10px;margin-bottom:4px;opacity:0.7;">ASSISTENTE</div><div class="bubble bubble-ai">${html}</div>` : `<div class="bubble bubble-user">${html}</div>`;
-            if(returnId) { d.id = 'temp-msg'; d.innerHTML = `<div class="bubble bubble-ai">${html}</div>`; }
-            box.appendChild(d); box.scrollTop = box.scrollHeight;
-            return returnId ? 'temp-msg' : null;
+            d.innerHTML = t==='ai' ? `<div class="bubble bubble-ai">${h}</div>` : `<div class="bubble bubble-user">${h}</div>`;
+            if(rid) { d.id='temp'; d.innerHTML=`<div class="bubble bubble-ai">${h}</div>`; }
+            b.appendChild(d); b.scrollTop = b.scrollHeight;
+            return rid ? 'temp' : null;
         }
 
-        function toggleMenu() {
-            const sb = document.getElementById('sidebar');
-            const ov = document.querySelector('.overlay');
-            sb.classList.toggle('active');
-            ov.classList.toggle('active');
-        }
-
-        function showToast(title, msg) {
-            const t = document.getElementById('toast');
-            t.innerHTML = `<strong>${title}</strong><br>${msg}`;
-            t.style.display = 'block';
-            setTimeout(() => t.style.display='none', 3000);
-        }
+        function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.overlay').classList.toggle('active'); }
+        function showToast(m) { const t=document.getElementById('toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); }
 
         function render() {
-            const grid = document.getElementById('grid');
+            const g = document.getElementById('grid');
             document.getElementById('monthTitle').innerText = MONTHS[currMonth];
-            grid.innerHTML = "";
-            const firstDay = new Date(2026, currMonth - 1, 1).getDay();
-            const daysInMonth = new Date(2026, currMonth, 0).getDate();
+            g.innerHTML = "";
+            const f = new Date(2026, currMonth-1, 1).getDay();
+            const tot = new Date(2026, currMonth, 0).getDate();
             const today = new Date();
             const is2026 = today.getFullYear() === 2026;
 
-            for (let i = 0; i < firstDay; i++) {
-                if(window.innerWidth > 768) grid.innerHTML += `<div></div>`; 
-            }
+            for(let i=0; i<f; i++) if(window.innerWidth>768) g.innerHTML += `<div></div>`;
 
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateObj = new Date(2026, currMonth - 1, d);
-                const dateStr = dateObj.toISOString().split('T')[0];
-                const wd = dateObj.getDay();
-                let isToday = (is2026 && d === today.getDate() && currMonth === (today.getMonth()+1));
+            for(let d=1; d<=tot; d++) {
+                const dt = new Date(2026, currMonth-1, d);
+                const ds = dt.toISOString().split('T')[0];
+                const wd = dt.getDay();
+                let isT = (is2026 && d===today.getDate() && currMonth===(today.getMonth()+1));
                 
-                let html = "";
-                let exc = dbEvents.find(e => e.data === dateStr);
-                
-                if(exc) {
-                    if(exc.tipo === 'recesso') html += `<div class="chip c-off">💤 ${exc.descricao}</div>`;
-                    else if(exc.tipo === 'cancelado') html += ``;
-                    else html += `<div class="chip c-esp">★ ${exc.descricao}</div>`;
-                } else if(FERIADOS[dateStr]) {
-                    html += `<div class="chip c-fer">🎈 ${FERIADOS[dateStr]}</div>`;
+                let h = "";
+                let ex = dbEvents.find(e=>e.data===ds);
+                if(ex) {
+                    if(ex.tipo==='recesso') h+=`<div class="chip c-off">💤 ${ex.descricao}</div>`;
+                    else if(ex.tipo==='cancelado') h+=``;
+                    else h+=`<div class="chip c-esp">★ ${ex.descricao}</div>`;
+                } else if(FERIADOS[ds]) {
+                    h+=`<div class="chip c-fer">🎈 ${FERIADOS[ds]}</div>`;
                 } else {
-                    if(wd===2 && ![1,7].includes(currMonth)) html += `<div class="chip c-teca">Talk Med.</div>`;
-                    let sh = "";
+                    if(wd===2 && ![1,7].includes(currMonth)) h+=`<div class="chip c-teca">Talk Med.</div>`;
+                    let sh="";
                     if(wd===1) sh="19h SH (Haran)"; if(wd===2) sh="19h SH (Karina)";
                     if(wd===3) sh="19h SH (Pat)"; if(wd===4) sh="19h SH (Pat)";
                     if(wd===5) sh="10h SH (Haran)";
-                    if(sh) html += `<div class="chip c-sh">${sh}</div>`;
-                    if(wd===6) html += `<div class="chip c-sh">10h SH (Karina)</div><div class="chip c-sh">15h SH (Karina)</div>`;
+                    if(sh) h+=`<div class="chip c-sh">${sh}</div>`;
+                    if(wd===6) h+=`<div class="chip c-sh">10h SH (Karina)</div><div class="chip c-sh">15h SH (Karina)</div>`;
                 }
-                
-                let cls = `day-card ${isToday ? 'is-today' : ''}`;
-                grid.innerHTML += `<div class="${cls}"><div class="day-num">${d}</div>${html}</div>`;
+                g.innerHTML += `<div class="day-card ${isT?'is-today':''}"><div class="day-num">${d}</div>${h}</div>`;
             }
         }
-        function changeMonth(d) {
-            currMonth += d; if(currMonth>12) currMonth=1; if(currMonth<1) currMonth=12; render();
-        }
-        
-        // Inicia Checando Login
-        checkUser();
+        function changeMonth(v) { currMonth+=v; if(currMonth>12)currMonth=1; if(currMonth<1)currMonth=12; render(); }
     </script>
 </body>
 </html>
