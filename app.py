@@ -32,11 +32,9 @@ def get_events():
         return jsonify(response.data)
     except: return jsonify([])
 
-# --- ROTAS DE AUDITORIA (LOGS) ---
 @app.route('/api/get_logs', methods=['GET'])
 def get_logs():
     try:
-        # Busca os últimos 50 logs para mostrar na aba Histórico
         response = supabase.table("audit_logs").select("*").order("created_at", desc=True).limit(50).execute()
         return jsonify(response.data)
     except: return jsonify([])
@@ -46,54 +44,61 @@ def undo_action():
     data = request.json
     log_id = data.get('log_id')
     try:
-        # 1. Pega o backup
+        print(f"Tentando desfazer Log ID: {log_id}")
+        
+        # 1. Busca o log
         log_res = supabase.table("audit_logs").select("*").eq("id", log_id).execute()
-        if not log_res.data: return jsonify({"ok": False})
+        if not log_res.data: 
+            return jsonify({"ok": False, "msg": "Log não encontrado"})
         
         log_entry = log_res.data[0]
         prev_state = log_entry['previous_state']
         target_date = log_entry['target_date']
         
-        # 2. Reverte
+        print(f"Estado anterior para {target_date}: {prev_state}")
+
+        # 2. Restaura
         if prev_state:
-            if 'id' in prev_state: del prev_state['id']
-            supabase.table("excecoes").upsert(prev_state).execute()
+            # Limpa chaves que não podem ser inseridas manualmente ou geram conflito
+            clean_state = {
+                "data": prev_state["data"],
+                "tipo": prev_state["tipo"],
+                "descricao": prev_state["descricao"]
+            }
+            supabase.table("excecoes").upsert(clean_state).execute()
         else:
+            # Se não tinha nada antes, deleta o que tem lá agora
             supabase.table("excecoes").delete().eq("data", target_date).execute()
             
         return jsonify({"ok": True})
     except Exception as e:
+        print(f"Erro CRÍTICO no Undo: {e}")
         return jsonify({"ok": False, "msg": str(e)})
 
-# --- CHAT INTELIGENTE ---
 @app.route('/api/chat', methods=['POST'])
 def chat_with_ai():
-    if not GROQ_API_KEY:
-        return jsonify({"ok": False, "reply": "Erro: Chave Groq não configurada."})
+    if not GROQ_API_KEY: return jsonify({"ok": False, "reply": "Erro: Sem chave Groq."})
 
     data = request.json
     user_message = data.get('text', '')
     history = data.get('history', [])
-    user_name = data.get('user', 'Anônimo') # Pega o nome do usuário
+    user_name = data.get('user', 'Anônimo')
     
     hoje = datetime.now(SP_TZ)
     hoje_str = hoje.strftime("%Y-%m-%d (%A)")
     
     system_prompt = f"""
-    Você é a IA do Calendário Awake. Hoje é {hoje_str}. Ano base: 2026.
+    Você é a IA do Calendário Awake. Hoje: {hoje_str}. Ano: 2026.
     
-    TAREFA:
-    1. Acompanhar contexto da conversa.
-    2. Identificar datas baseadas em {hoje_str}.
-    3. Ações: 'especial' (criar), 'recesso' (bloquear), 'cancelado' (limpar dia).
-    4. Formato: "Horário Atividade (Instrutor)".
+    REGRAS RÍGIDAS DE AGENDA:
+    1. Talk Meditation (Teca) ocorre APENAS às TERÇAS-FEIRAS (08h15). Nunca agende Talk Med em outro dia a menos que o usuário EXIJA explicitamente.
+    2. Feriados NÃO cancelam aulas automaticamente.
+    3. Ao criar aula, use formato: "Horário Nome (Instrutor)". Ex: "08h15 Talk Med. (Teca)".
     
     JSON SCHEMA:
     {{
-        "reply": "Resposta curta e natural.",
-        "actions": [
-            {{ "date": "YYYY-MM-DD", "type": "especial/recesso/cancelado", "description": "Descrição" }}
-        ]
+        "reply": "Resposta curta.",
+        "actions": [ {{ "date": "YYYY-MM-DD", "type": "especial/recesso/cancelado", "description": "..." }} ]
     }}
     """
 
@@ -101,55 +106,38 @@ def chat_with_ai():
 
     try:
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile", 
-            messages=messages_payload,
-            temperature=0.5,
-            max_tokens=1024,
-            response_format={"type": "json_object"}
+            model="llama-3.3-70b-versatile", messages=messages_payload,
+            temperature=0.5, max_tokens=1024, response_format={"type": "json_object"}
         )
-
         ai_data = json.loads(completion.choices[0].message.content)
-        reply_text = ai_data.get("reply", "Feito.")
-        actions = ai_data.get("actions", [])
         
         count = 0
-        for action in actions:
+        for action in ai_data.get("actions", []):
             try:
-                # 1. Validação Simples
-                if action['type'] not in ['especial', 'recesso', 'cancelado']: action['type'] = 'especial'
-                if not action['description'] and action['type'] != 'cancelado': action['description'] = "Evento"
-
-                # 2. Auditoria (Snapshot do antes)
+                # Snapshot Antes
                 existing = supabase.table("excecoes").select("*").eq("data", action['date']).execute()
                 prev_state = existing.data[0] if existing.data else None
 
-                # 3. Executa
+                # Executa
                 supabase.table("excecoes").upsert({
                     "data": action['date'],
                     "tipo": action['type'],
                     "descricao": action['description']
                 }).execute()
 
-                # 4. Salva Log
+                # Log
                 supabase.table("audit_logs").insert({
                     "user_name": user_name,
                     "target_date": action['date'],
                     "action_summary": f"{action['type']}: {action['description']}",
                     "previous_state": prev_state
                 }).execute()
-
                 count += 1
-            except Exception as e:
-                print(f"Erro DB: {e}")
+            except: pass
 
-        return jsonify({
-            "ok": True,
-            "reply": reply_text,
-            "actions_count": count
-        })
+        return jsonify({"ok": True, "reply": ai_data.get("reply", "Feito."), "actions_count": count})
 
-    except Exception as e:
-        return jsonify({"ok": False, "reply": f"Erro: {str(e)}"})
+    except Exception as e: return jsonify({"ok": False, "reply": str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)
