@@ -13,12 +13,11 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
-# Inicializa
 try:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
     client = Groq(api_key=GROQ_API_KEY)
 except Exception as e:
-    print(f"Erro de Configuração: {e}")
+    print(f"Erro Config: {e}")
 
 SP_TZ = pytz.timezone('America/Sao_Paulo')
 
@@ -36,49 +35,51 @@ def get_events():
 @app.route('/api/chat', methods=['POST'])
 def chat_with_ai():
     if not GROQ_API_KEY:
-        return jsonify({"ok": False, "reply": "Erro: Chave Groq não configurada no Railway."})
+        return jsonify({"ok": False, "reply": "Erro: Chave Groq não configurada."})
 
     data = request.json
     user_message = data.get('text', '')
+    # Recebe o histórico da conversa (lista de mensagens anteriores)
+    history = data.get('history', []) 
     
     hoje = datetime.now(SP_TZ)
     hoje_str = hoje.strftime("%Y-%m-%d (%A)")
     
-    # Prompt do Sistema
+    # Prompt do Sistema (A personalidade e as regras)
     system_prompt = f"""
     Você é a IA do Calendário Awake. Hoje é {hoje_str}. Ano base: 2026.
     
     SUA TAREFA:
-    1. Ler a mensagem do usuário.
+    1. Acompanhar a conversa e entender o contexto das mensagens anteriores.
     2. Identificar datas relativas (ex: "amanhã", "próxima sexta") com base em {hoje_str}.
     3. Extrair a intenção: 'especial' (criar aula/evento), 'recesso' (bloquear dia), 'cancelado' (remover).
     4. Formatar descrição: "Horário Atividade (Instrutor)". Ex: "19h Yoga (Pat)".
     
-    IMPORTANTE: Responda APENAS com um JSON válido. Não coloque texto antes ou depois.
+    IMPORTANTE: Responda APENAS com um JSON válido.
+    Se o usuário apenas estiver conversando (sem pedir alteração), mande "actions": [].
     
     JSON SCHEMA:
     {{
-        "reply": "Sua resposta curta e natural em português para o usuário.",
+        "reply": "Sua resposta natural em português, considerando o contexto.",
         "actions": [
-            {{ "date": "YYYY-MM-DD", "type": "especial/recesso/cancelado", "description": "Texto final do card" }}
+            {{ "date": "YYYY-MM-DD", "type": "especial/recesso/cancelado", "description": "Descrição curta" }}
         ]
     }}
     """
 
+    # Monta a lista completa de mensagens para a IA
+    # 1. Sistema (Regras) + 2. Histórico (Contexto) + 3. Mensagem Atual
+    messages_payload = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": user_message}]
+
     try:
         completion = client.chat.completions.create(
-            # ATUALIZADO: Modelo mais recente e estável da Groq
             model="llama-3.3-70b-versatile", 
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_message}
-            ],
+            messages=messages_payload,
             temperature=0.5,
             max_tokens=1024,
             response_format={"type": "json_object"}
         )
 
-        # Processamento
         response_content = completion.choices[0].message.content
         ai_data = json.loads(response_content)
         
@@ -104,7 +105,7 @@ def chat_with_ai():
         })
 
     except Exception as e:
-        return jsonify({"ok": False, "reply": f"Erro técnico Groq: {str(e)}"})
+        return jsonify({"ok": False, "reply": f"Erro técnico: {str(e)}"})
 
 if __name__ == '__main__':
     app.run(debug=True)
