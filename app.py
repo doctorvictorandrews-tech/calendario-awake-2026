@@ -4,13 +4,15 @@ import calendar
 from datetime import date, datetime
 import pytz
 import re
+import difflib # Biblioteca para Fuzzy Matching (Correção de typos)
+import unicodedata
 
 # ==============================================================================
 # 1. CONFIGURAÇÃO (KERNEL)
 # ==============================================================================
 st.set_page_config(
     page_title="Awake OS",
-    page_icon="📅",
+    page_icon="🧠",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -19,99 +21,143 @@ SP_TZ = pytz.timezone('America/Sao_Paulo')
 HOJE = datetime.now(SP_TZ).date()
 
 # ==============================================================================
-# 2. DESIGN SYSTEM "CLEAN PRO"
+# 2. CÉREBRO DE INTELIGÊNCIA (NLP AVANÇADO)
 # ==============================================================================
-st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400&display=swap');
 
-    :root {
-        --bg: #0E1117;           /* Fundo Base Streamlit */
-        --card-bg: #1A1C24;      /* Fundo do Card */
-        --card-border: #2B2F3B;  /* Borda Sutil */
-        --text-main: #FFFFFF;
-        --text-sub: #9CA3AF;
-        --accent: #10B981;       /* Verde Awake */
-        --highlight: #D9890D;    /* Dourado Ecofin */
-    }
+class AwakeBrain:
+    def __init__(self):
+        self.instructors = ["Karina", "Haran", "Pat", "Teca", "Gabe", "Ana", "Victor"]
+        self.months_map = {
+            "jan": 1, "janeiro": 1, "fev": 2, "fevereiro": 2, "mar": 3, "março": 3,
+            "abr": 4, "abril": 4, "mai": 5, "maio": 5, "jun": 6, "junho": 6,
+            "jul": 7, "julho": 7, "ago": 8, "agosto": 8, "set": 9, "setembro": 9,
+            "out": 10, "outubro": 10, "nov": 11, "novembro": 11, "dez": 12, "dezembro": 12
+        }
+        self.stop_words = [
+            "o", "a", "os", "as", "um", "uma", "de", "do", "da", "em", "no", "na", "para", "por", "com",
+            "será", "vai", "ter", "haver", "mudar", "alterar", "trocar", "colocar", "inserir", "agendar",
+            "substituir", "pelo", "pela", "ministrada", "aula", "experiência", "sessão", "prática",
+            "dia", "hoje", "amanhã", "sh", "sound", "healing"
+        ]
 
-    /* REMOVER BAGUNÇA NATIVA */
-    header, footer, #MainMenu { display: none !important; }
-    .stApp { background-color: var(--bg); font-family: 'Inter', sans-serif; }
-    
-    /* INPUT DE COMANDO GIGANTE */
-    .stTextInput div[data-baseweb="input"] {
-        background-color: #16181D !important;
-        border: 1px solid #333 !important;
-        border-radius: 12px !important;
-        padding: 10px !important;
-    }
-    .stTextInput input {
-        color: white !important;
-        font-size: 18px !important;
-        font-family: 'Inter', sans-serif !important;
-    }
-    .stTextInput label {
-        font-size: 16px !important;
-        color: var(--text-sub) !important;
-        font-weight: 600 !important;
-    }
+    def normalize_text(self, text):
+        # Remove acentos e deixa minúsculo
+        text = unicodedata.normalize('NFKD', text).encode('ASCII', 'ignore').decode('utf-8')
+        return text.lower()
 
-    /* HEADER */
-    .header-wrapper {
-        display: flex; justify-content: space-between; align-items: flex-end;
-        padding-bottom: 20px; border-bottom: 1px solid var(--card-border); margin-bottom: 30px;
-    }
-    .big-month { font-size: 42px; font-weight: 800; color: white; letter-spacing: -1px; line-height: 1; }
-    .year-label { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--text-sub); text-transform: uppercase; }
+    def extract_date(self, text, current_month):
+        text_norm = self.normalize_text(text)
+        today = date.today()
+        year = today.year + 1 if today.month == 12 and current_month == 1 else today.year # Lógica básica de ano
+        if current_month < today.month: year = 2026 # Força 2026 conforme solicitado
 
-    /* CARD DO DIA (Clean & Minimal) */
-    .day-box {
-        background-color: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: 8px;
-        min-height: 140px;
-        padding: 12px;
-        display: flex; flex-direction: column;
-        transition: 0.2s;
-    }
-    .day-box:hover {
-        border-color: var(--text-sub);
-        background-color: #22252E;
-        transform: translateY(-2px);
-    }
-    
-    /* Estados */
-    .is-today { border: 1px solid var(--accent); background: rgba(16, 185, 129, 0.05); }
-    .is-past { opacity: 0.4; filter: grayscale(1); }
-    .is-blur { opacity: 0.15; pointer-events: none; }
+        # 1. Tenta formato DD/MM
+        match_slash = re.search(r'(\d{1,2})\s*/\s*(\d{1,2})', text_norm)
+        if match_slash:
+            return date(year, int(match_slash.group(2)), int(match_slash.group(1)))
 
-    /* Tipografia do Card */
-    .day-num { font-size: 20px; font-weight: 700; color: #555; margin-bottom: 10px; display: flex; justify-content: space-between; }
-    .is-today .day-num { color: var(--accent); }
-    .day-num span { font-size: 10px; background: var(--accent); color: #000; padding: 2px 6px; border-radius: 4px; }
+        # 2. Tenta "Dia 20" ou apenas "20" se o contexto for claro
+        # Procura por meses por extenso (ex: "20 de janeiro")
+        for month_name, month_num in self.months_map.items():
+            pattern = f"(\\d{{1,2}})\\s*(de)?\\s*{month_name}"
+            match_ext = re.search(pattern, text_norm)
+            if match_ext:
+                return date(year, month_num, int(match_ext.group(1)))
 
-    /* Chips (Eventos) */
-    .evt { font-size: 12px; padding: 6px 10px; border-radius: 6px; margin-bottom: 5px; line-height: 1.4; border-left: 3px solid; color: #eee; }
-    
-    .evt-sh { background: rgba(16, 185, 129, 0.1); border-color: var(--accent); color: #A7F3D0; }
-    .evt-teca { background: rgba(139, 92, 246, 0.1); border-color: #8B5CF6; color: #E9D5FF; }
-    .evt-special { background: rgba(245, 158, 11, 0.1); border-color: var(--highlight); color: #FDE68A; }
-    .evt-off { background: rgba(255,255,255,0.05); border-color: #555; color: #888; border-style: dashed; }
-    .evt-fer { background: rgba(239, 68, 68, 0.15); border-color: #EF4444; color: #FECACA; }
+        # 3. Tenta apenas "Dia 20" (Assume mês atual da visualização)
+        match_day = re.search(r'\bdia\s+(\d{1,2})\b', text_norm)
+        if match_day:
+            return date(year, current_month, int(match_day.group(1)))
+        
+        return None
 
-    /* Botões Nav */
-    .nav-btn {
-        background: none; border: 1px solid #333; color: #888; 
-        padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: 0.2s;
-    }
-    .nav-btn:hover { border-color: #fff; color: #fff; background: #222; }
+    def extract_instructor(self, text):
+        # Usa Fuzzy Matching para achar instrutor mesmo com erro de digitação
+        # Ex: "Carina" -> "Karina"
+        words = text.split()
+        found = None
+        
+        # Verifica palavra por palavra
+        for word in words:
+            # Limpa pontuação
+            clean_word = re.sub(r'[^\w\s]', '', word)
+            matches = difflib.get_close_matches(clean_word, self.instructors, n=1, cutoff=0.75)
+            if matches:
+                found = matches[0]
+                break
+        return found
 
-    </style>
-""", unsafe_allow_html=True)
+    def extract_time(self, text):
+        # Pega 19h, 19:00, 19:30, 08h15
+        match = re.search(r'(\d{1,2})[h:](\d{0,2})', text.lower())
+        if match:
+            h = match.group(1)
+            m = match.group(2)
+            if m and m != "00": return f"{h}h{m}"
+            return f"{h}h"
+        return ""
+
+    def parse(self, text, view_month_idx):
+        if not text: return {"ok": False}
+        
+        # 1. Detectar Data
+        dt = self.extract_date(text, view_month_idx)
+        if not dt: return {"ok": False, "msg": "Não entendi a data. Tente 'Dia 20' ou '20/01'."}
+
+        # 2. Detectar Intenção (Tipo)
+        text_lower = text.lower()
+        tipo = "especial"
+        if any(x in text_lower for x in ["recesso", "feriado", "folga"]): tipo = "recesso"
+        elif any(x in text_lower for x in ["cancelar", "remover", "excluir", "off", "sem aula", "tirar"]): tipo = "cancelado"
+
+        desc = ""
+        if tipo == "recesso": desc = "RECESSO"
+        elif tipo == "cancelado": desc = "CANCELADO"
+        else:
+            # 3. Extração Inteligente de Descrição
+            # Remove a data do texto original para não sujar
+            clean_text = re.sub(r'\d{1,2}/\d{1,2}', '', text)
+            clean_text = re.sub(r'\bdia\s+\d{1,2}\b', '', clean_text, flags=re.IGNORECASE)
+            
+            # Extrai Hora e Instrutor
+            hora = self.extract_time(clean_text)
+            instrutor = self.extract_instructor(clean_text)
+            
+            # Limpeza de Stopwords (Remove "substitua", "pelo", etc)
+            words = clean_text.split()
+            filtered_words = []
+            
+            # Regex para limpar hora do texto (para não duplicar)
+            time_pattern = re.compile(r'(\d{1,2})[h:](\d{0,2})', re.IGNORECASE)
+            
+            for w in words:
+                w_norm = self.normalize_text(w)
+                # Pula se for stopword, se for o nome do instrutor ou se for hora
+                if w_norm in self.stop_words: continue
+                if instrutor and w_norm in self.normalize_text(instrutor): continue
+                if time_pattern.match(w): continue
+                if w_norm.isdigit(): continue # Remove números soltos
+                
+                filtered_words.append(w)
+            
+            # Reconstrói a atividade
+            activity = " ".join(filtered_words).strip().title()
+            # Correção para "De" (ex: Ritual De Abertura)
+            activity = re.sub(r'\bDe\b', 'de', activity)
+            
+            # Montagem Final
+            final_instr_str = f" ({instrutor})" if instrutor else ""
+            desc = f"{hora} {activity}{final_instr_str}".strip()
+            
+            # Remove espaços duplos
+            desc = re.sub(r'\s+', ' ', desc)
+
+        return {"ok": True, "data": dt, "tipo": tipo, "desc": desc}
+
+brain = AwakeBrain()
 
 # ==============================================================================
-# 3. CONEXÃO DATABASE
+# 3. SUPABASE & DATABASE
 # ==============================================================================
 @st.cache_resource
 def init_db():
@@ -136,225 +182,183 @@ def save_data(d, t, desc):
         st.cache_data.clear()
 
 # ==============================================================================
-# 4. CÉREBRO (NLP AVANÇADO)
+# 4. DESIGN SYSTEM (ECOFIN DARK STYLE)
 # ==============================================================================
-def advanced_parser(text, current_month):
-    txt = text.lower()
-    
-    # 1. Mapa de Meses (Texto -> Número)
-    meses_map = {
-        "jan":1, "janeiro":1, "fev":2, "fevereiro":2, "mar":3, "março":3, "abr":4, "abril":4,
-        "mai":5, "maio":5, "jun":6, "junho":6, "jul":7, "julho":7, "ago":8, "agosto":8,
-        "set":9, "setembro":9, "out":10, "outubro":10, "nov":11, "novembro":11, "dez":12, "dezembro":12
-    }
-    
-    # 2. Mapa de Números (Extenso -> Dígito)
-    nums_map = {
-        "um":1, "dois":2, "três":3, "quatro":4, "cinco":5, "seis":6, "sete":7, "oito":8, "nove":9, "dez":10,
-        "vinte":20, "trinta":30, "primeiro":1
-    }
-
-    # 3. Detecção de Data
-    dia, mes = None, current_month
-    
-    # Tenta achar nome de mês na frase
-    for k, v in meses_map.items():
-        if k in txt: mes = v
-    
-    # Tenta achar "20/01"
-    match_slash = re.search(r'(\d{1,2})/(\d{1,2})', txt)
-    # Tenta achar "dia 20"
-    match_dia_num = re.search(r'\bdia\s+(\d{1,2})', txt)
-    # Tenta achar número solto se não tiver os anteriores (arriscado, mas útil)
-    match_num_loose = re.search(r'\b(\d{1,2})\b', txt)
-
-    if match_slash:
-        dia, mes = int(match_slash.group(1)), int(match_slash.group(2))
-    elif match_dia_num:
-        dia = int(match_dia_num.group(1))
-    elif match_num_loose:
-        # Só aceita número solto se parecer um dia válido (1-31) e não for hora
-        val = int(match_num_loose.group(1))
-        if 1 <= val <= 31 and f"{val}h" not in txt:
-            dia = val
-
-    if not dia:
-        return {"ok": False, "msg": "Não entendi a data. Tente 'Dia 20' ou '20/01'."}
-
-    try: dt = date(2026, mes, dia)
-    except: return {"ok": False, "msg": "Data inválida no calendário."}
-
-    # 4. Detecção de Intenção (Tipo)
-    tipo = "especial"
-    if any(x in txt for x in ["recesso", "feriado", "folga"]): tipo = "recesso"
-    elif any(x in txt for x in ["cancelar", "cancelado", "off", "remover", "tirar", "excluir"]): tipo = "cancelado"
-
-    # 5. Limpeza Cirúrgica da Descrição
-    desc = ""
-    if tipo == "recesso": desc = "RECESSO"
-    elif tipo == "cancelado": desc = "CANCELADO"
-    else:
-        raw = text # Usa texto original para manter Maiúsculas/Minúsculas
-        
-        # Remove a data encontrada
-        raw = re.sub(r'\d{1,2}/\d{1,2}', '', raw)
-        raw = re.sub(rf'\bdia\s+{dia}\b', '', raw, flags=re.IGNORECASE)
-        raw = re.sub(rf'\b{dia}\b', '', raw) # Remove o número do dia solto
-
-        # Remove mês se houver
-        for m_name in meses_map.keys():
-            raw = re.sub(rf'\b{m_name}\b', '', raw, flags=re.IGNORECASE)
-
-        # Captura Hora (Ex: 19h, 19:30)
-        hora_str = ""
-        match_hora = re.search(r'(\d{1,2})[h:](\d{0,2})', raw)
-        if match_hora:
-            hora_str = match_hora.group(0).replace(":", "h")
-            if "h" not in hora_str: hora_str += "h"
-            raw = raw.replace(match_hora.group(0), "") # Remove a hora do texto cru
-
-        # Lista de "Lixo" para remover
-        garbage = [
-            "substitua", "troque", "altere", "mude", "coloque", "insira", "agende",
-            "sh", "sound", "healing", "pelo", "pela", "por", "que", "sera", "será", 
-            "vai", "ter", "com", "as", "às", "do", "da", "de", "no", "na", "o", "a", "para",
-            "experiência", "aula", "sessão"
-        ]
-        
-        # Remove lixo
-        clean_pattern = re.compile(r'\b(' + '|'.join(garbage) + r')\b', re.IGNORECASE)
-        activity = clean_pattern.sub(' ', raw)
-        
-        # Identifica Instrutor (Preserva nome)
-        instrutores = ["Karina", "Haran", "Pat", "Teca", "Gabe", "Ana", "Victor"]
-        found_instr = None
-        for instr in instrutores:
-            if instr.lower() in activity.lower():
-                found_instr = instr
-                # Remove nome do instrutor do meio do texto para por no final
-                activity = re.sub(instr, "", activity, flags=re.IGNORECASE)
-                break
-        
-        # Formatação Final
-        activity = " ".join(activity.split()).title() # Remove espaços duplos
-        final_instr_str = f" ({found_instr})" if found_instr else ""
-        
-        desc = f"{hora_str} {activity}{final_instr_str}".strip()
-
-    return {"ok": True, "data": dt, "tipo": tipo, "desc": desc}
-
-# ==============================================================================
-# 5. EXECUÇÃO DA INTERFACE
-# ==============================================================================
-
-# Sessão
+# Controle de Mês
 if 'mes_idx' not in st.session_state: st.session_state.mes_idx = datetime.now().month
 
-# --- BARRA DE COMANDO (HERO SECTION) ---
-st.markdown("<br>", unsafe_allow_html=True)
-col_input, col_status = st.columns([4, 1])
+THEMES = {
+    1: "#10B981", 2: "#8B5CF6", 3: "#3B82F6", 4: "#EC4899",
+    5: "#F59E0B", 6: "#EF4444", 7: "#06B6D4", 8: "#6366F1",
+    9: "#84CC16", 10: "#F97316", 11: "#14B8A6", 12: "#E11D48"
+}
+CURRENT_ACCENT = THEMES[st.session_state.mes_idx]
 
-with col_input:
-    command = st.text_input("Comando Awake", placeholder="Ex: Dia 25 Yoga Sound Bath às 9h com Pat", label_visibility="collapsed")
+st.markdown(f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Inter:wght@300;400;600&family=JetBrains+Mono:wght@400&display=swap');
 
-if command:
-    res = advanced_parser(command, st.session_state.mes_idx)
-    if res['ok']:
-        # Confirmação Visual Imediata
-        st.success(f"Entendido! {res['data'].strftime('%d/%m')} será: {res['desc']}")
+    :root {{
+        --bg-body: #050505;
+        --glass: rgba(255, 255, 255, 0.03);
+        --border: rgba(255, 255, 255, 0.08);
+        --accent: {CURRENT_ACCENT};
+        --primary: #10B981;
+    }}
+
+    .stApp {{ background-color: var(--bg-body); font-family: 'Inter', sans-serif; color: white; }}
+    header, footer, #MainMenu {{ display: none !important; }}
+    [data-testid="stSidebar"] {{ background-color: #0A0A0A; border-right: 1px solid var(--border); }}
+    
+    /* Inputs */
+    .stChatInput textarea, .stTextInput input {{
+        background-color: #111 !important; border: 1px solid #333 !important; color: white !important; border-radius: 12px !important;
+    }}
+
+    /* Calendar Grid */
+    .day-container {{
+        background: var(--glass);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        min-height: 160px;
+        padding: 12px;
+        display: flex; flex-direction: column;
+        transition: 0.3s;
+        backdrop-filter: blur(10px);
+    }}
+    .day-container:hover {{
+        transform: translateY(-5px); border-color: var(--accent); background: rgba(255,255,255,0.06);
+    }}
+    .is-today {{ border: 1px solid var(--primary); background: rgba(16, 185, 129, 0.05); }}
+    .is-blur {{ opacity: 0.2; filter: grayscale(1); }}
+    
+    .day-num {{ font-family: 'Manrope', sans-serif; font-size: 20px; font-weight: 700; color: #555; margin-bottom: 12px; display:flex; justify-content:space-between; }}
+    .is-today .day-num {{ color: white; }}
+    
+    /* Chips */
+    .tag {{ font-size: 11px; padding: 6px 10px; border-radius: 8px; margin-bottom: 6px; background: rgba(255,255,255,0.05); border-left: 2px solid #333; color: #ccc; }}
+    .tag-sh {{ border-color: #10B981; color: #D1FAE5; background: rgba(16, 185, 129, 0.1); }}
+    .tag-teca {{ border-color: #8B5CF6; color: #EDE9FE; background: rgba(139, 92, 246, 0.1); }}
+    .tag-esp {{ border-color: var(--accent); color: white; background: rgba(255,255,255,0.1); border-left: 3px solid var(--accent); }}
+    .tag-fer {{ border-color: #EF4444; color: #FEE2E2; background: rgba(239, 68, 68, 0.1); }}
+    .tag-off {{ border-color: #6B7280; color: #9CA3AF; border-style: dashed; }}
+
+    /* Header Mês */
+    .month-header {{
+        font-family: 'Manrope', sans-serif; font-size: 42px; font-weight: 800;
+        background: linear-gradient(180deg, #fff 0%, {CURRENT_ACCENT} 100%);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }}
+    
+    /* Glow */
+    .ambient-glow {{
+        position: fixed; top: -20%; right: -10%; width: 600px; height: 600px;
+        background: var(--accent); filter: blur(250px); opacity: 0.15; z-index: -1; pointer-events: none;
+    }}
+    </style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="ambient-glow"></div>', unsafe_allow_html=True)
+
+# ==============================================================================
+# 5. EXECUÇÃO
+# ==============================================================================
+
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/12128/12128373.png", width=60)
+    st.markdown("### Awake Brain AI")
+    st.caption("Digite comandos naturais...")
+    
+    prompt = st.chat_input("Ex: Trocar dia 20 para Ritual 19h")
+    
+    if prompt:
+        res = brain.parse(prompt, st.session_state.mes_idx)
         st.session_state['pending'] = res
-    else:
-        st.error(res['msg'])
+        
+    if 'pending' in st.session_state:
+        p = st.session_state['pending']
+        if p['ok']:
+            st.markdown(f"""
+            <div style="background:#111; padding:15px; border-radius:10px; border:1px solid {CURRENT_ACCENT}; margin-bottom:15px;">
+                <div style="color:#aaa; font-size:10px; text-transform:uppercase;">Detectado</div>
+                <div style="color:white; font-weight:bold; font-size:16px;">{p['data'].strftime('%d/%m')}</div>
+                <div style="color:{CURRENT_ACCENT}; font-size:14px; margin-top:5px;">{p['desc']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            if c1.button("✅ CONFIRMAR"):
+                save_data(p['data'], p['tipo'], p['desc'])
+                del st.session_state['pending']
+                st.rerun()
+            if c2.button("❌ DESCARTAR"):
+                del st.session_state['pending']
+                st.rerun()
+        else:
+            st.error(p['msg'])
+            del st.session_state['pending']
 
-# Botões de Ação (Aparecem só se houver pendência)
-if 'pending' in st.session_state:
-    p = st.session_state['pending']
-    c1, c2 = st.columns([1, 4])
-    if c1.button("✅ SALVAR ALTERAÇÃO", type="primary"):
-        save_data(p['data'], p['tipo'], p['desc'])
-        del st.session_state['pending']
-        st.rerun()
-    if c2.button("DESCARTAR"):
-        del st.session_state['pending']
-        st.rerun()
-
-st.divider()
-
-# --- NAVEGAÇÃO ---
-c_prev, c_title, c_next = st.columns([1, 8, 1])
-
-with c_prev:
-    if st.button("◀", key="prev", use_container_width=True): 
+# --- MAIN ---
+c1, c2, c3 = st.columns([1, 10, 1])
+with c1:
+    st.write("")
+    if st.button("◀", key="p"): 
         st.session_state.mes_idx = 12 if st.session_state.mes_idx == 1 else st.session_state.mes_idx - 1
         st.rerun()
-
-with c_next:
-    if st.button("▶", key="next", use_container_width=True): 
+with c3:
+    st.write("")
+    if st.button("▶", key="n"): 
         st.session_state.mes_idx = 1 if st.session_state.mes_idx == 12 else st.session_state.mes_idx + 1
         st.rerun()
 
-with c_title:
-    meses_nomes = {1:"JANEIRO", 2:"FEVEREIRO", 3:"MARÇO", 4:"ABRIL", 5:"MAIO", 6:"JUNHO", 7:"JULHO", 8:"AGOSTO", 9:"SETEMBRO", 10:"OUTUBRO", 11:"NOVEMBRO", 12:"DEZEMBRO"}
-    st.markdown(f"""
-    <div class="header-wrapper">
-        <div class="big-month">{meses_nomes[st.session_state.mes_idx]}</div>
-        <div class="year-label">2026 • AWAKE OS</div>
-    </div>
-    """, unsafe_allow_html=True)
+with c2:
+    meses_txt = {1:"JANEIRO", 2:"FEVEREIRO", 3:"MARÇO", 4:"ABRIL", 5:"MAIO", 6:"JUNHO", 7:"JULHO", 8:"AGOSTO", 9:"SETEMBRO", 10:"OUTUBRO", 11:"NOVEMBRO", 12:"DEZEMBRO"}
+    st.markdown(f'<div class="month-header">{meses_txt[st.session_state.mes_idx]} <span style="font-size:16px; color:#555">2026</span></div>', unsafe_allow_html=True)
 
-# --- GRID DO CALENDÁRIO ---
+# CALENDÁRIO
 cal = calendar.Calendar(firstweekday=6)
 dias = list(cal.itermonthdates(2026, st.session_state.mes_idx))
-db_data = get_data()
+excecoes = get_data()
 
 feriados = {
     date(2026, 1, 1): "Confraternização", date(2026, 1, 25): "Aniv. SP",
     date(2026, 2, 17): "Carnaval", date(2026, 4, 3): "Sexta Santa",
     date(2026, 4, 21): "Tiradentes", date(2026, 5, 1): "Trabalhador",
-    date(2026, 7, 9): "Rev. 32", date(2026, 9, 7): "Independência",
-    date(2026, 10, 12): "N. Sra. Aparecida", date(2026, 11, 2): "Finados",
-    date(2026, 11, 15): "Proclamação", date(2026, 11, 20): "Consciência",
-    date(2026, 12, 25): "Natal"
+    date(2026, 6, 4): "Corpus Christi", date(2026, 7, 9): "Rev. 32", 
+    date(2026, 9, 7): "Independência", date(2026, 10, 12): "N. Sra. Aparecida", 
+    date(2026, 11, 2): "Finados", date(2026, 11, 15): "Proclamação", 
+    date(2026, 11, 20): "Consciência", date(2026, 12, 25): "Natal"
 }
 
-# 1. Cabeçalho Dias
-cols_h = st.columns(7)
+# Grid Header
+cols = st.columns(7)
 for i, d in enumerate(["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"]):
-    cols_h[i].markdown(f"<div style='text-align:center; color:#666; font-size:12px; font-weight:bold; margin-bottom:10px;'>{d}</div>", unsafe_allow_html=True)
+    cols[i].markdown(f"<div style='text-align:center; color:#666; font-size:12px; font-weight:bold; margin-bottom:10px;'>{d}</div>", unsafe_allow_html=True)
 
-# 2. Dias
+# Grid Body
 chunks = [dias[i:i+7] for i in range(0, len(dias), 7)]
-
 for semana in chunks:
     cols = st.columns(7)
     for i, dia in enumerate(semana):
         with cols[i]:
-            # Estados
-            css_class = "day-box"
-            if dia == HOJE: css_class += " is-today"
-            if dia < HOJE: css_class += " is-past"
-            if dia.month != st.session_state.mes_idx: css_class += " is-blur"
+            css = "day-container"
+            if dia == HOJE: css += " is-today"
+            if dia.month != st.session_state.mes_idx: css += " is-blur"
             
-            # Conteúdo
             html = ""
-            
-            # A. DB (Supabase)
-            if dia in db_data:
-                item = db_data[dia]
-                t = item['tipo']
-                if t == 'recesso': html += f'<div class="evt evt-off">💤 {item["descricao"]}</div>'
-                elif t == 'cancelado': html += f'<div class="evt evt-off" style="text-decoration:line-through">Cancelado</div>'
-                else: html += f'<div class="evt evt-special">★ {item["descricao"]}</div>'
-            
+            # A. DB
+            if dia in excecoes:
+                exc = excecoes[dia]
+                t = exc['tipo']
+                if t == 'recesso': html += f'<div class="tag tag-off">💤 {exc["descricao"]}</div>'
+                elif t == 'cancelado': html += f'<div class="tag tag-off" style="text-decoration:line-through">Cancelado</div>'
+                else: html += f'<div class="tag tag-esp">★ {exc["descricao"]}</div>'
             # B. Feriado
             elif dia in feriados:
-                html += f'<div class="evt evt-fer">🎈 {feriados[dia]}</div>'
-            
+                html += f'<div class="tag tag-fer">🎈 {feriados[dia]}</div>'
             # C. Padrão
             elif dia.month == st.session_state.mes_idx:
                 wd = dia.weekday()
-                if wd == 1 and dia.month not in [1, 7]: html += '<div class="evt evt-teca">Talk Med.</div>'
-                
+                if wd==1 and dia.month not in [1,7]: html += '<div class="tag tag-teca">Talk Med.</div>'
                 sh = ""
                 if wd==0: sh = "19h SH (Haran)"
                 elif wd==1: sh = "19h SH (Karina)"
@@ -362,19 +366,12 @@ for semana in chunks:
                 elif wd==3: sh = "19h SH (Pat)"
                 elif wd==4: sh = "19h SH (Haran)"
                 elif wd==5: sh = "10h SH (Karina)"
-                
-                if sh: html += f'<div class="evt evt-sh">{sh}</div>'
+                if sh: html += f'<div class="tag tag-sh">{sh}</div>'
 
-            # Badge Hoje
-            badge = '<span>HOJE</span>' if dia == HOJE else ''
-            
-            # Render
+            badge = f'<span style="font-size:9px; color:{CURRENT_ACCENT}; font-weight:800;">HOJE</span>' if dia == HOJE else ''
             st.markdown(f"""
-            <div class="{css_class}">
-                <div class="day-num">
-                    {dia.day}
-                    {badge}
-                </div>
+            <div class="{css}">
+                <div class="day-num"><span>{dia.day}</span>{badge}</div>
                 {html}
             </div>
             """, unsafe_allow_html=True)
