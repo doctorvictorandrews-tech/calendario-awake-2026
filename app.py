@@ -1,6 +1,5 @@
 import os
 import json
-import re
 import pytz
 from flask import Flask, render_template, request, jsonify
 from supabase import create_client
@@ -9,7 +8,7 @@ from groq import Groq
 
 app = Flask(__name__)
 
-# --- CONFIGURAÇÃO E SEGURANÇA ---
+# --- CONFIGURAÇÃO ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
@@ -17,23 +16,9 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 try:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
     client = Groq(api_key=GROQ_API_KEY)
-except Exception as e:
-    print(f"⚠️ ERRO DE CONFIGURAÇÃO: {e}")
+except: pass
 
 SP_TZ = pytz.timezone('America/Sao_Paulo')
-
-# --- FUNÇÃO DE LIMPEZA DE JSON (SALVA-VIDAS) ---
-def extract_clean_json(text):
-    """ Encontra o primeiro JSON válido { ... } dentro do texto da IA """
-    try:
-        # Tenta achar o padrão JSON entre chaves
-        match = re.search(r'\{.*\}', text, re.DOTALL)
-        if match:
-            json_str = match.group(0)
-            return json.loads(json_str)
-        return json.loads(text) # Tenta direto se não achar padrão
-    except:
-        return None
 
 @app.route('/')
 def home(): return render_template('index.html')
@@ -75,17 +60,19 @@ def save_day():
         if not evs:
             supabase.table("excecoes").upsert({"data":dt, "tipo":"cancelado", "descricao":"Limpo", "detalhes":""}).execute()
         else:
+            # Gera descrição visual simples para o banco
             visuais = []
             for e in evs:
-                # Se for feriado/aviso, usa só o título. Se for aula, usa formato completo.
                 if e.get('type') in ['c-fer', 'c-com', 'c-off']:
                     visuais.append(e.get('title'))
                 else:
                     visuais.append(f"{e.get('time','')} {e.get('title','')} ({e.get('instructor','')})")
             
+            visual_desc = " | ".join(visuais)
+            
             supabase.table("excecoes").upsert({
                 "data": dt, "tipo": evs[0].get('type','especial'), 
-                "descricao": " | ".join(visuais), 
+                "descricao": visual_desc, 
                 "detalhes": json.dumps(evs)
             }).execute()
             
@@ -93,30 +80,29 @@ def save_day():
         return jsonify({"ok":True})
     except Exception as e: return jsonify({"ok":False,"msg":str(e)})
 
-# --- IA COM VISÃO DE RAIO-X ---
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    if not GROQ_API_KEY: return jsonify({"ok": False, "reply": "Erro: Chave GROQ não configurada."})
-    
+    if not GROQ_API_KEY: return jsonify({"ok": False, "reply": "Erro API."})
     d = request.json
     user_msg = d['text']
     history = d.get('history', [])
     user_name = d.get('user', 'Usuário')
+    
     hoje = datetime.now(SP_TZ).strftime("%Y-%m-%d (%A)")
     
-    # 1. Contexto do Banco
     try:
-        db_data = supabase.table("excecoes").select("data, descricao").execute().data
-        db_context = json.dumps(db_data)
-    except Exception as e:
-        db_context = "[]"
-        print(f"Erro DB Context: {e}")
+        current_data = supabase.table("excecoes").select("data, descricao, tipo").execute().data
+        db_context = json.dumps(current_data)
+    except: db_context = "[]"
 
-    # 2. Prompt Especializado
     sys_prompt = f"""
-    Você é a IA Gerente do Awake Calendar 2026. Hoje: {hoje}.
+    Você é a IA Assistente do "Calendário Awake 2026". Hoje: {hoje}.
     
-    >>> AGENDA PADRÃO (FIXA):
+    >>> SEU PAPEL:
+    1. Você é uma assistente geral e amigável. Pode conversar sobre a vida, filosofia ou dúvidas gerais.
+    2. Você é a guardiã do calendário.
+    
+    >>> AGENDA PADRÃO (Matriz Fixa):
     - Seg: 19h SH (Haran)
     - Ter: 08h15 Talk Med. (Teca) | 19h SH (Karina)
     - Qua/Qui: 19h SH (Pat)
@@ -125,88 +111,64 @@ def chat():
     
     >>> EXCEÇÕES NO BANCO: {db_context}
     
-    >>> INSTRUÇÕES CRÍTICAS:
-    1. **Conversa vs Ação:** Se o usuário falar "Oi", "Tudo bem?", "O que é SH?", RESPONDA gentilmente e retorne "actions": []. NÃO CADASTRE NADA.
-    2. **Confirmação:** Se o usuário pedir para alterar a agenda, gere o JSON em "actions".
-    3. **Tipos:** - 'c-fer' (Feriado), 'c-com' (Data Comemorativa), 'c-off' (Recesso): Só precisam de 'title'. 'time' e 'instructor' vazios.
-       - 'c-sh', 'c-teca', 'c-esp': Precisam de 'time', 'title', 'instructor'.
+    >>> REGRAS DE AÇÃO (CRÍTICO):
+    - Se o usuário APENAS conversar ou tirar dúvida ("Que dia é hoje?", "Tem aula quarta?"), responda no campo 'reply' e deixe 'actions' como lista VAZIA []. NÃO CADASTRE NADA.
+    - Só gere 'actions' se houver uma ORDEM CLARA de modificação ("Marque...", "Cancele...", "Mude...").
+    - Se a ordem for ambígua, PERGUNTE antes de agir (retorne actions []).
     
-    >>> FORMATO JSON OBRIGATÓRIO:
-    {{
-        "reply": "Texto de resposta...",
-        "actions": [
-            {{
-                "date": "YYYY-MM-DD",
-                "action": "create" (ou "cancel"),
-                "type": "c-esp",
-                "time": "HH:MM",
-                "title": "Titulo",
-                "instructor": "Nome",
-                "details": "HTML opcional"
-            }}
-        ]
+    >>> DADOS:
+    - Feriados/Datas Comemorativas: Não precisam de hora/instrutor.
+    - Experiências (SH, Talk, Especial): PRECISAM de time, title, instructor.
+    
+    >>> OUTPUT JSON:
+    {{ 
+        "reply": "...", 
+        "actions": [ {{ "date": "YYYY-MM-DD", "type": "...", "time": "...", "title": "...", "instructor": "...", "rich_details": "..." }} ] 
     }}
     """
 
     try:
-        comp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile", 
-            messages=[{"role":"system","content":sys_prompt}] + history + [{"role":"user","content":user_msg}], 
-            response_format={"type":"json_object"}, 
-            temperature=0.2
-        )
-        
-        # 3. Extração Segura
-        raw_content = comp.choices[0].message.content
-        ai_resp = extract_clean_json(raw_content)
-        
-        if not ai_resp:
-            return jsonify({"ok":True, "reply": "Entendi, mas tive um erro técnico ao processar. Tente ser mais direto."})
-
-        reply_text = ai_resp.get("reply", "Feito.")
+        comp = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role":"system","content":sys_prompt}]+history+[{"role":"user","content":user_msg}], response_format={"type":"json_object"}, temperature=0.3)
+        ai_resp = json.loads(comp.choices[0].message.content)
         cnt = 0
         
-        # 4. Execução
-        for a in ai_resp.get('actions', []):
+        # Só processa se tiver ações reais
+        for a in ai_resp.get('actions',[]):
             try:
-                t_date = a.get('date')
-                if not t_date: continue
-                
-                # Prepara dados
-                act = a.get('action', 'create')
-                if act == 'cancel':
-                    payload = {"data":t_date, "tipo":"cancelado", "descricao":"Cancelado", "detalhes":""}
-                else:
-                    v_type = a.get('type', 'c-esp')
-                    # Limpeza de campos vazios para Feriados
-                    if v_type in ['c-fer', 'c-com', 'c-off']:
-                        clean_time = ""
-                        clean_inst = ""
-                        desc_str = a.get('title')
-                    else:
-                        clean_time = a.get('time', '')
-                        clean_inst = a.get('instructor', '')
-                        desc_str = f"{clean_time} {a.get('title')} ({clean_inst})"
-                    
-                    struct = [{
-                        "time": clean_time, "title": a.get('title'), 
-                        "instructor": clean_inst, "type": v_type, 
-                        "details": a.get('details','')
-                    }]
-                    payload = {"data": t_date, "tipo": v_type, "descricao": desc_str, "detalhes": json.dumps(struct)}
-
-                # Salva
-                exist = supabase.table("excecoes").select("*").eq("data", t_date).execute()
+                exist = supabase.table("excecoes").select("*").eq("data", a['date']).execute()
                 prev = exist.data[0] if exist.data else None
+                
+                # Monta estrutura
+                structured_event = [{
+                    "time": a.get('time', ''),
+                    "title": a.get('title', 'Evento'),
+                    "instructor": a.get('instructor', ''),
+                    "details": a.get('rich_details', ''),
+                    "type": a.get('type', 'especial')
+                }]
+                
+                # Descrição visual simples
+                if a['type'] in ['c-fer', 'c-com', 'recesso']:
+                    desc_str = a.get('title', 'Evento')
+                else:
+                    desc_str = f"{a.get('time')} {a.get('title')} ({a.get('instructor')})"
+
+                payload = {
+                    "data": a['date'], 
+                    "tipo": a['type'], 
+                    "descricao": desc_str, 
+                    "detalhes": json.dumps(structured_event)
+                }
+                
+                if a['type'] == 'cancelado':
+                    payload = {"data":a['date'], "tipo":"cancelado", "descricao":"Cancelado", "detalhes":""}
+
                 supabase.table("excecoes").upsert(payload).execute()
-                supabase.table("audit_logs").insert({"user_name":user_name, "target_date":t_date, "action_summary":f"IA: {act}", "previous_state":prev}).execute()
-                cnt += 1
-            except Exception as e_loop:
-                print(f"Erro loop: {e_loop}")
-
-        return jsonify({"ok":True, "reply": reply_text, "actions_count":cnt})
-
-    except Exception as e:
-        return jsonify({"ok":False, "reply": f"Erro interno do sistema: {str(e)}"})
+                supabase.table("audit_logs").insert({"user_name":user_name, "target_date":a['date'], "action_summary":f"{a['type']} IA", "previous_state":prev}).execute()
+                cnt+=1
+            except: pass
+            
+        return jsonify({"ok":True, "reply": ai_resp.get("reply", "Feito."), "actions_count":cnt})
+    except Exception as e: return jsonify({"ok":False,"reply":str(e)})
 
 if __name__ == '__main__': app.run(debug=True)
