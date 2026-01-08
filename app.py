@@ -60,7 +60,7 @@ def save_day():
         if not evs:
             supabase.table("excecoes").upsert({"data":dt, "tipo":"cancelado", "descricao":"Limpo", "detalhes":""}).execute()
         else:
-            # Gera descrição visual simples para o banco
+            # Cria resumo visual para o campo descricao
             visuais = []
             for e in evs:
                 if e.get('type') in ['c-fer', 'c-com', 'c-off']:
@@ -68,11 +68,9 @@ def save_day():
                 else:
                     visuais.append(f"{e.get('time','')} {e.get('title','')} ({e.get('instructor','')})")
             
-            visual_desc = " | ".join(visuais)
-            
             supabase.table("excecoes").upsert({
                 "data": dt, "tipo": evs[0].get('type','especial'), 
-                "descricao": visual_desc, 
+                "descricao": " | ".join(visuais), 
                 "detalhes": json.dumps(evs)
             }).execute()
             
@@ -80,6 +78,7 @@ def save_day():
         return jsonify({"ok":True})
     except Exception as e: return jsonify({"ok":False,"msg":str(e)})
 
+# --- CÉREBRO DA IA (MODO DUAL: GESTORA + EXPERT) ---
 @app.route('/api/chat', methods=['POST'])
 def chat():
     if not GROQ_API_KEY: return jsonify({"ok": False, "reply": "Erro API."})
@@ -90,40 +89,51 @@ def chat():
     
     hoje = datetime.now(SP_TZ).strftime("%Y-%m-%d (%A)")
     
+    # 1. Recupera o que já mudou no calendário
     try:
-        current_data = supabase.table("excecoes").select("data, descricao, tipo").execute().data
+        current_data = supabase.table("excecoes").select("data, descricao").execute().data
         db_context = json.dumps(current_data)
     except: db_context = "[]"
 
+    # 2. O PROMPT MESTRE
     sys_prompt = f"""
-    Você é a IA Assistente do "Calendário Awake 2026". Hoje: {hoje}.
+    Você é a IA do "Awake Calendar 2026". Hoje é {hoje}.
     
-    >>> SEU PAPEL:
-    1. Você é uma assistente geral e amigável. Pode conversar sobre a vida, filosofia ou dúvidas gerais.
-    2. Você é a guardiã do calendário.
-    
-    >>> AGENDA PADRÃO (Matriz Fixa):
+    >>> SUAS DUAS FUNÇÕES:
+    1. **Gestora de Agenda (PRIORIDADE MÁXIMA):** Se o usuário falar sobre datas, eventos, aulas ou horários, você deve gerenciar o calendário com precisão absoluta.
+    2. **Assistente Expert:** Se o usuário perguntar sobre filosofia, bem-estar, textos para posts ou dúvidas gerais, use sua inteligência ilimitada para ajudar, mantendo um tom profissional e acolhedor.
+
+    >>> CONHECIMENTO DO TEMPO (MATRIZ FIXA):
     - Seg: 19h SH (Haran)
     - Ter: 08h15 Talk Med. (Teca) | 19h SH (Karina)
     - Qua/Qui: 19h SH (Pat)
     - Sex: 10h SH (Haran)
     - Sáb: 10h SH (Karina) | 15h SH (Karina)
-    
-    >>> EXCEÇÕES NO BANCO: {db_context}
-    
-    >>> REGRAS DE AÇÃO (CRÍTICO):
-    - Se o usuário APENAS conversar ou tirar dúvida ("Que dia é hoje?", "Tem aula quarta?"), responda no campo 'reply' e deixe 'actions' como lista VAZIA []. NÃO CADASTRE NADA.
-    - Só gere 'actions' se houver uma ORDEM CLARA de modificação ("Marque...", "Cancele...", "Mude...").
-    - Se a ordem for ambígua, PERGUNTE antes de agir (retorne actions []).
-    
-    >>> DADOS:
-    - Feriados/Datas Comemorativas: Não precisam de hora/instrutor.
-    - Experiências (SH, Talk, Especial): PRECISAM de time, title, instructor.
-    
-    >>> OUTPUT JSON:
-    {{ 
-        "reply": "...", 
-        "actions": [ {{ "date": "YYYY-MM-DD", "type": "...", "time": "...", "title": "...", "instructor": "...", "rich_details": "..." }} ] 
+    *Nota: SH = Sound Healing. Feriados e Datas Comemorativas já estão carregados no visual.*
+
+    >>> CONTEXTO ATUAL (ALTERAÇÕES NO BANCO):
+    {db_context}
+
+    >>> COMO AGIR:
+    - O usuário perguntou algo aleatório? ("Como meditar?") -> Responda no 'reply' e mande 'actions': [].
+    - O usuário mandou alterar a agenda? -> Gere o JSON em 'actions'.
+    - O usuário perguntou da agenda? ("O que tem dia 21?") -> Consulte a Matriz Fixa + Contexto Atual e responda no 'reply'.
+
+    >>> FORMATO DE AÇÃO (Somente se houver alteração):
+    {{
+        "date": "YYYY-MM-DD",
+        "action": "create" (para criar aula/experiência), "cancel" (para cancelar dia), "info" (para feriados/avisos sem hora)
+        "type": "c-sh" (Verde/SH), "c-teca" (Roxo/Talk), "c-esp" (Amarelo/Geral), "c-fer" (Feriado), "c-off" (Recesso)
+        "time": "HH:MM" (obrigatório para create),
+        "title": "Nome" (obrigatório),
+        "instructor": "Nome" (obrigatório para create),
+        "details": "Texto rico/HTML se necessário"
+    }}
+
+    >>> RESPOSTA JSON OBRIGATÓRIA:
+    {{
+        "reply": "Sua resposta falada aqui...",
+        "actions": [ ... lista de ações ou vazio ... ]
     }}
     """
 
@@ -132,39 +142,41 @@ def chat():
         ai_resp = json.loads(comp.choices[0].message.content)
         cnt = 0
         
-        # Só processa se tiver ações reais
         for a in ai_resp.get('actions',[]):
             try:
-                exist = supabase.table("excecoes").select("*").eq("data", a['date']).execute()
-                prev = exist.data[0] if exist.data else None
+                target_date = a['date']
+                act = a.get('action', 'create')
                 
-                # Monta estrutura
-                structured_event = [{
-                    "time": a.get('time', ''),
-                    "title": a.get('title', 'Evento'),
-                    "instructor": a.get('instructor', ''),
-                    "details": a.get('rich_details', ''),
-                    "type": a.get('type', 'especial')
-                }]
-                
-                # Descrição visual simples
-                if a['type'] in ['c-fer', 'c-com', 'recesso']:
-                    desc_str = a.get('title', 'Evento')
+                # Prepara Payload
+                if act == 'cancel':
+                    payload = {"data":target_date, "tipo":"cancelado", "descricao":"Cancelado", "detalhes":""}
                 else:
-                    desc_str = f"{a.get('time')} {a.get('title')} ({a.get('instructor')})"
+                    # Define tipo visual
+                    v_type = a.get('type', 'c-esp')
+                    
+                    # Se for feriado/aviso, não precisa de hora/instrutor no visual
+                    if act == 'info' or v_type in ['c-fer', 'c-com', 'c-off']:
+                        desc_str = a.get('title')
+                        struct = [{"title": a.get('title'), "type": v_type, "details": a.get('details','')}]
+                    else:
+                        # Evento completo
+                        desc_str = f"{a.get('time')} {a.get('title')} ({a.get('instructor')})"
+                        struct = [{
+                            "time": a.get('time',''), "title": a.get('title',''), 
+                            "instructor": a.get('instructor',''), "type": v_type, 
+                            "details": a.get('details','')
+                        }]
+                    
+                    payload = {
+                        "data": target_date, "tipo": v_type,
+                        "descricao": desc_str, "detalhes": json.dumps(struct)
+                    }
 
-                payload = {
-                    "data": a['date'], 
-                    "tipo": a['type'], 
-                    "descricao": desc_str, 
-                    "detalhes": json.dumps(structured_event)
-                }
-                
-                if a['type'] == 'cancelado':
-                    payload = {"data":a['date'], "tipo":"cancelado", "descricao":"Cancelado", "detalhes":""}
-
+                # Executa no Banco
+                exist = supabase.table("excecoes").select("*").eq("data", target_date).execute()
+                prev = exist.data[0] if exist.data else None
                 supabase.table("excecoes").upsert(payload).execute()
-                supabase.table("audit_logs").insert({"user_name":user_name, "target_date":a['date'], "action_summary":f"{a['type']} IA", "previous_state":prev}).execute()
+                supabase.table("audit_logs").insert({"user_name":user_name, "target_date":target_date, "action_summary":f"IA: {a.get('title','')}", "previous_state":prev}).execute()
                 cnt+=1
             except: pass
             
