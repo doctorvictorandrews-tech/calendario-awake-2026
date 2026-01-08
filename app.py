@@ -14,8 +14,11 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
 # Inicializa
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-client = Groq(api_key=GROQ_API_KEY)
+try:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+    client = Groq(api_key=GROQ_API_KEY)
+except Exception as e:
+    print(f"Erro de Configuração: {e}")
 
 SP_TZ = pytz.timezone('America/Sao_Paulo')
 
@@ -33,7 +36,7 @@ def get_events():
 @app.route('/api/chat', methods=['POST'])
 def chat_with_ai():
     if not GROQ_API_KEY:
-        return jsonify({"ok": False, "reply": "Erro: Chave Groq não configurada."})
+        return jsonify({"ok": False, "reply": "Erro: Chave Groq não configurada no Railway."})
 
     data = request.json
     user_message = data.get('text', '')
@@ -41,39 +44,38 @@ def chat_with_ai():
     hoje = datetime.now(SP_TZ)
     hoje_str = hoje.strftime("%Y-%m-%d (%A)")
     
-    # Prompt do Sistema (Llama 3 entende muito bem isso)
+    # Prompt do Sistema
     system_prompt = f"""
-    Você é a IA do Calendário Awake. Hoje é {hoje_str}. Ano 2026.
+    Você é a IA do Calendário Awake. Hoje é {hoje_str}. Ano base: 2026.
     
-    TAREFA:
-    1. Analise a frase do usuário.
-    2. Identifique intenção de agendamento (aula, recesso, cancelar).
-    3. Responda em JSON ESTRITO.
-
-    REGRAS:
-    - Se o usuário disser datas relativas ("amanhã"), calcule baseado em {hoje_str}.
-    - Tipos: 'especial', 'recesso', 'cancelado'.
-    - Descrição: "Horário Atividade (Instrutor)".
-
-    JSON DE SAÍDA:
+    SUA TAREFA:
+    1. Ler a mensagem do usuário.
+    2. Identificar datas relativas (ex: "amanhã", "próxima sexta") com base em {hoje_str}.
+    3. Extrair a intenção: 'especial' (criar aula/evento), 'recesso' (bloquear dia), 'cancelado' (remover).
+    4. Formatar descrição: "Horário Atividade (Instrutor)". Ex: "19h Yoga (Pat)".
+    
+    IMPORTANTE: Responda APENAS com um JSON válido. Não coloque texto antes ou depois.
+    
+    JSON SCHEMA:
     {{
-        "reply": "Sua resposta curta e amigável em português",
+        "reply": "Sua resposta curta e natural em português para o usuário.",
         "actions": [
-            {{ "date": "YYYY-MM-DD", "type": "tipo", "description": "descrição" }}
+            {{ "date": "YYYY-MM-DD", "type": "especial/recesso/cancelado", "description": "Texto final do card" }}
         ]
     }}
     """
 
     try:
         completion = client.chat.completions.create(
-            model="llama3-70b-8192", # Modelo muito inteligente e rápido
+            # ATUALIZADO: Modelo mais recente e estável da Groq
+            model="llama-3.3-70b-versatile", 
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message}
             ],
             temperature=0.5,
             max_tokens=1024,
-            response_format={"type": "json_object"} # Garante que volta JSON
+            response_format={"type": "json_object"}
         )
 
         # Processamento
@@ -92,7 +94,8 @@ def chat_with_ai():
                     "descricao": action['description']
                 }).execute()
                 count += 1
-            except: pass
+            except Exception as e:
+                print(f"Erro DB: {e}")
 
         return jsonify({
             "ok": True,
@@ -101,7 +104,7 @@ def chat_with_ai():
         })
 
     except Exception as e:
-        return jsonify({"ok": False, "reply": f"Erro Groq: {str(e)}"})
+        return jsonify({"ok": False, "reply": f"Erro técnico Groq: {str(e)}"})
 
 if __name__ == '__main__':
     app.run(debug=True)
