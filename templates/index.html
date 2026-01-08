@@ -9,7 +9,7 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
-        /* DESIGN SYSTEM (FIXED LIGHT MODE) */
+        /* DESIGN SYSTEM (LIGHT MODE CLEAN) */
         :root {
             --bg-app: #F8FAFC; 
             --bg-sidebar: #0F172A; 
@@ -55,7 +55,12 @@
         .chat-input { width: 100%; background: transparent; border: none; color: white; padding: 14px; font-size: 14px; outline: none; resize: none; overflow-y: hidden; height: 50px; max-height: 120px; font-family: 'Inter', sans-serif; }
         .send-btn { background: var(--brand); border: none; width: 32px; height: 32px; border-radius: 6px; margin: 0 8px 8px 0; cursor: pointer; color: #022c22; display: grid; place-items: center; flex-shrink: 0; }
 
-        /* MAIN CALENDAR */
+        /* LOGS */
+        .logs-list { flex: 1; overflow-y: auto; padding: 0; }
+        .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; align-items: flex-start; }
+        .undo-btn { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; }
+
+        /* CALENDAR */
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
         .top-bar { padding: 20px 30px; background: var(--bg-card); border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
         .nav-btn { width: 36px; height: 36px; border: 1px solid var(--border-light); background: var(--bg-app); border-radius: 6px; cursor: pointer; color: var(--txt-secondary); display: grid; place-items: center; }
@@ -74,13 +79,9 @@
         .c-sh { background: #ECFDF5; color: #065F46; border-color: #34D399; } /* Verde */
         .c-teca { background: #F5F3FF; color: #5B21B6; border-color: #A78BFA; } /* Roxo */
         .c-esp { background: #FFFBEB; color: #92400E; border-color: #FCD34D; } /* Amarelo */
-        .c-fer { background: #FEF2F2; color: #991B1B; border-color: #FCA5A5; } /* Vermelho (Feriado) */
-        .c-com { background: #eff6ff; color: #1e3a8a; border-color: #93c5fd; } /* Azul (Datas Comem.) */
+        .c-fer { background: #FEF2F2; color: #991B1B; border-color: #FCA5A5; } /* Vermelho */
+        .c-com { background: #eff6ff; color: #1e3a8a; border-color: #93c5fd; } /* Azul */
         .c-off { background: #F1F5F9; color: #64748B; border-color: #CBD5E1; text-decoration: line-through; }
-
-        /* Logs */
-        .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; align-items: flex-start; }
-        .undo-btn { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; }
 
         /* Mobile */
         .menu-toggle { display: none; font-size: 24px; cursor: pointer; color: var(--txt-primary); margin-right: 15px; }
@@ -97,7 +98,6 @@
     </style>
 </head>
 <body>
-
     <div id="auth-screen">
         <div class="login-box">
             <div style="font-size:40px; color:var(--brand); margin-bottom:10px;"><i class="ph-bold ph-calendar-check"></i></div>
@@ -122,7 +122,6 @@
                 <div class="tab" onclick="switchTab('history')">HISTÓRICO</div>
             </div>
         </div>
-
         <div id="chatView" class="view">
             <div class="chat-scroll" id="chatHistory"><div class="msg-group"><div class="bubble bubble-ai">Olá! Pronta para atualizar o calendário.</div></div></div>
             <div class="input-area">
@@ -132,7 +131,6 @@
                 </div>
             </div>
         </div>
-
         <div id="historyView" class="view">
             <div class="logs-list" id="logsList"></div>
         </div>
@@ -232,8 +230,8 @@
         async function undo(id) {
             if(!confirm("Desfazer essa ação?")) return;
             await fetch('/api/undo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({log_id:id}) });
-            await loadEvents(); // Recarrega calendário
-            await loadLogs();   // Recarrega lista
+            await loadEvents();
+            await loadLogs();
             showToast("Ação desfeita!");
         }
 
@@ -283,13 +281,13 @@
         function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.overlay').classList.toggle('active'); }
         function showToast(m) { const t=document.getElementById('toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); }
 
-        // --- RENDER INTELIGENTE (COLORING LOGIC) ---
+        // --- SISTEMA DE CORES ---
         function getChipClass(desc) {
             const txt = desc.toLowerCase();
             if(txt.includes('sh') || txt.includes('sound healing')) return 'c-sh'; // Verde
             if(txt.includes('talk') || txt.includes('meditation')) return 'c-teca'; // Roxo
             if(txt.includes('recesso')) return 'c-off';
-            return 'c-esp'; // Amarelo (Padrão)
+            return 'c-esp'; // Amarelo (Outros)
         }
 
         function render() {
@@ -310,49 +308,50 @@
                 let isT = (is2026 && d===today.getDate() && currMonth===(today.getMonth()+1));
                 
                 let h = "";
-
-                // 1. FERIADOS (Sempre aparecem)
-                if(FERIADOS[ds]) {
-                    const f = FERIADOS[ds];
-                    const cls = f.tipo === 'fer' ? 'c-fer' : 'c-com';
-                    const icon = f.tipo === 'fer' ? '🎈' : '📅';
-                    h += `<div class="chip ${cls}">${icon} ${f.nome}</div>`;
-                }
-
-                // 2. EVENTOS (Banco ou Padrão)
+                // 1. VERIFICA SE O DIA FOI TOTALMENTE CANCELADO
                 let ex = dbEvents.find(e=>e.data===ds);
-                
-                if(ex) {
-                    if(ex.tipo==='cancelado') {
-                        // Não renderiza nada extra (vazio)
-                    } else if(ex.tipo==='recesso') {
-                        h+=`<div class="chip c-off">💤 ${ex.descricao}</div>`;
-                    } else {
-                        // Usa a função inteligente de cores
-                        const colorClass = getChipClass(ex.descricao);
-                        h+=`<div class="chip ${colorClass}">★ ${ex.descricao}</div>`;
+                let isBlocked = (ex && ex.tipo === 'cancelado');
+
+                if(!isBlocked) {
+                    // 2. FERIADOS (MOSTRA SE NÃO ESTIVER CANCELADO)
+                    if(FERIADOS[ds]) {
+                        const f = FERIADOS[ds];
+                        const cls = f.tipo === 'fer' ? 'c-fer' : 'c-com';
+                        const icon = f.tipo === 'fer' ? '🎈' : '📅';
+                        h += `<div class="chip ${cls}">${icon} ${f.nome}</div>`;
                     }
-                } else {
-                    // Agenda Padrão (Fallback)
-                    // Regra Teca (Terça)
+
+                    // 3. AGENDA PADRÃO
+                    // Talk Med (Terças)
                     if(wd===2 && ![1,7].includes(currMonth)) {
                         h+=`<div class="chip c-teca">08h15 Talk Med. (Teca)</div>`;
                     }
-                    
+                    // SH Base
                     let sh="";
                     if(wd===1) sh="19h SH (Haran)"; 
                     if(wd===2) sh="19h SH (Karina)";
                     if(wd===3) sh="19h SH (Pat)"; 
                     if(wd===4) sh="19h SH (Pat)";
                     if(wd===5) sh="10h SH (Haran)";
-                    
                     if(sh) h+=`<div class="chip c-sh">${sh}</div>`;
-                    
-                    if(wd===6) {
-                        h+=`<div class="chip c-sh">10h SH (Karina)</div><div class="chip c-sh">15h SH (Karina)</div>`;
+                    if(wd===6) h+=`<div class="chip c-sh">10h SH (Karina)</div><div class="chip c-sh">15h SH (Karina)</div>`;
+
+                    // 4. EXCEÇÕES DA IA (FICAM NO FIM)
+                    if(ex) {
+                        if(ex.tipo === 'recesso') {
+                            // Se for recesso, talvez o usuário queira que esconda tudo acima?
+                            // O usuário disse: "Uma informação nova não exclui a antiga".
+                            // Mas "Recesso" geralmente é bloqueio.
+                            // Vou manter mostrando, pois a "etiqueta" de recesso avisa.
+                            h+=`<div class="chip c-off">💤 ${ex.descricao}</div>`;
+                        } else {
+                            const colorClass = getChipClass(ex.descricao);
+                            h+=`<div class="chip ${colorClass}">★ ${ex.descricao}</div>`;
+                        }
                     }
                 }
-                
+                // Se isBlocked == true, renderiza h vazio (dia limpo)
+
                 g.innerHTML += `<div class="day-card ${isT?'is-today':''}"><div class="day-num">${d}</div>${h}</div>`;
             }
         }
