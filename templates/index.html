@@ -3,114 +3,343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Awake OS AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <title>Awake Calendar</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
-        /* DESIGN SYSTEM ECOFIN DARK */
+        /* --- DESIGN SYSTEM: CLEAN & CRISP --- */
         :root {
-            --bg: #050505;
-            --glass: rgba(255, 255, 255, 0.03);
-            --border: rgba(255, 255, 255, 0.08);
-            --text-main: #FFFFFF;
-            --text-sec: #9CA3AF;
-            --primary: #10B981; /* Verde Awake */
-            --accent: #D9890D; /* Dourado */
+            /* Cores de Fundo e Superfície */
+            --bg-body: #F9FAFB;       /* Cinza muito suave (Fundo Geral) */
+            --bg-sidebar: #111827;    /* Azul-Preto Profundo (Sidebar) */
+            --bg-card: #FFFFFF;       /* Branco Puro (Cards) */
+            
+            /* Bordas e Linhas */
+            --border-light: #E5E7EB;  /* Cinza claro para linhas */
+            --border-dark: #1F2937;   /* Borda da sidebar */
+            
+            /* Texto */
+            --text-primary: #111827;  /* Quase preto (Leitura perfeita) */
+            --text-secondary: #6B7280; /* Cinza médio */
+            --text-inverse: #FFFFFF;  /* Texto na sidebar */
+            
+            /* Marca */
+            --brand-green: #059669;   /* Verde Profissional */
+            --brand-accent: #D97706;  /* Âmbar */
+            
+            /* Cores de Eventos (Pastel High-Contrast) */
+            --evt-sh-bg: #ECFDF5; --evt-sh-txt: #065F46; --evt-sh-bor: #34D399;
+            --evt-teca-bg: #F5F3FF; --evt-teca-txt: #5B21B6; --evt-teca-bor: #A78BFA;
+            --evt-esp-bg: #FFFBEB; --evt-esp-txt: #92400E; --evt-esp-bor: #FCD34D;
+            --evt-fer-bg: #FEF2F2; --evt-fer-txt: #991B1B; --evt-fer-bor: #FCA5A5;
+            --evt-off-bg: #F3F4F6; --evt-off-txt: #4B5563; --evt-off-bor: #D1D5DB;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background-color: var(--bg); color: var(--text-main); font-family: 'Inter', sans-serif; height: 100vh; display: flex; overflow: hidden; }
-
-        /* FX */
-        .ambient-light { position: fixed; width: 800px; height: 800px; background: var(--primary); filter: blur(250px); opacity: 0.06; border-radius: 50%; pointer-events: none; z-index: -1; }
         
-        /* SIDEBAR */
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR (MODERNA E ESCURA) --- */
         .sidebar {
-            width: 400px; background: rgba(10,10,10,0.95); border-right: 1px solid var(--border);
-            display: flex; flex-direction: column; z-index: 10; backdrop-filter: blur(20px);
+            width: 360px;
+            background-color: var(--bg-sidebar);
+            color: var(--text-inverse);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-dark);
+            z-index: 20;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.05);
         }
-        .brand {
-            padding: 30px; font-family: 'Manrope'; font-weight: 800; font-size: 20px; 
-            letter-spacing: -0.5px; border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; gap: 10px;
+
+        .brand-area {
+            padding: 32px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
         
+        .logo {
+            font-family: 'Manrope', sans-serif;
+            font-weight: 800;
+            font-size: 22px;
+            letter-spacing: -0.5px;
+            display: flex; align-items: center; gap: 12px;
+            color: white;
+        }
+        .logo i { color: var(--brand-green); }
+
+        /* Chat Area */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            overflow: hidden;
+        }
+
         .chat-history {
-            flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            padding-bottom: 20px;
         }
-        
-        /* Mensagens */
-        .msg { max-width: 85%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .msg-user { align-self: flex-end; background: var(--primary); color: #000; border-bottom-right-radius: 2px; }
-        .msg-ai { align-self: flex-start; background: var(--glass); border: 1px solid var(--border); color: #ddd; border-bottom-left-radius: 2px; }
-        .ai-name { font-size: 10px; color: var(--text-sec); margin-bottom: 4px; font-weight: 700; text-transform: uppercase; }
 
-        .input-area { padding: 20px; border-top: 1px solid var(--border); background: #080808; }
+        /* Balões de Chat */
+        .msg {
+            max-width: 90%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+        }
+        .msg-ai {
+            background: rgba(255,255,255,0.1);
+            color: #E5E7EB;
+            border-bottom-left-radius: 2px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .msg-user {
+            align-self: flex-end;
+            background: var(--brand-green);
+            color: white;
+            border-bottom-right-radius: 2px;
+            font-weight: 500;
+        }
+        .ai-label { font-size: 10px; text-transform: uppercase; color: #6B7280; margin-bottom: 4px; font-weight: 700; letter-spacing: 1px; }
+
+        /* Input Area */
+        .input-box {
+            padding: 20px;
+            background: #0F131D;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
         .input-wrapper { position: relative; }
-        .chat-input {
-            width: 100%; background: #151515; border: 1px solid #333; color: white;
-            padding: 16px; padding-right: 50px; border-radius: 12px; font-family: 'Inter'; font-size: 14px; outline: none; transition: 0.3s;
-        }
-        .chat-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
-        .send-btn {
-            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-            background: transparent; border: none; color: var(--primary); font-size: 20px;
-            cursor: pointer; padding: 5px; border-radius: 8px; transition: 0.2s;
-        }
-        .send-btn:hover { background: rgba(16, 185, 129, 0.1); }
-
-        /* CALENDAR AREA */
-        .main { flex-grow: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; }
         
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-        .month-title { font-family: 'Manrope'; font-size: 48px; font-weight: 800; color: white; }
-        
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 15px; }
-        .weekday { color: var(--text-sec); font-size: 11px; text-transform: uppercase; font-weight: 700; text-align: center; margin-bottom: 10px; letter-spacing: 1px; }
+        .cmd-input {
+            width: 100%;
+            background: #1F2937;
+            border: 1px solid #374151;
+            color: white;
+            padding: 14px 45px 14px 16px;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: 0.2s;
+        }
+        .cmd-input:focus { border-color: var(--brand-green); box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2); }
+        .cmd-input::placeholder { color: #6B7280; }
 
+        .send-icon {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            color: var(--brand-green); cursor: pointer; font-size: 18px;
+            transition: 0.2s;
+        }
+        .send-icon:hover { color: white; }
+
+        /* --- MAIN CALENDAR (CLEAN & BRIGHT) --- */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-body);
+            overflow: hidden;
+        }
+
+        /* Header Navigation */
+        .header {
+            background: var(--bg-card);
+            padding: 24px 40px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .month-title {
+            font-family: 'Manrope', sans-serif;
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -1px;
+        }
+        .year-label {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-left: 8px;
+            background: #F3F4F6;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .nav-actions { display: flex; gap: 12px; }
+        .btn-nav {
+            width: 40px; height: 40px;
+            background: white; border: 1px solid var(--border-light);
+            border-radius: 8px;
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        .btn-nav:hover { background: #F9FAFB; border-color: #D1D5DB; transform: translateY(-1px); }
+
+        /* Grid System */
+        .calendar-wrapper {
+            flex: 1;
+            padding: 30px 40px;
+            overflow-y: auto;
+        }
+
+        .grid-header {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .weekday {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .grid-body {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 16px;
+            /* Garante que os cards tenham altura mínima boa */
+            auto-rows: minmax(160px, 1fr); 
+        }
+
+        /* --- DAY CARD (THE STAR) --- */
         .day-card {
-            background: var(--glass); border: 1px solid var(--border); border-radius: 14px;
-            min-height: 150px; padding: 12px; display: flex; flex-direction: column;
-            transition: 0.3s; position: relative; backdrop-filter: blur(10px);
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            position: relative;
         }
-        .day-card:hover { transform: translateY(-5px); border-color: var(--primary); background: rgba(255,255,255,0.05); }
-        
-        .day-num { font-family: 'Manrope'; font-weight: 700; font-size: 18px; color: #555; margin-bottom: 10px; display: flex; justify-content: space-between; }
-        .is-today { border-color: var(--primary); background: rgba(16,185,129,0.02); }
-        .is-today .day-num { color: white; }
-        .today-tag { font-size: 9px; background: var(--primary); color: #000; padding: 2px 6px; border-radius: 10px; }
-        
-        /* CHIPS */
-        .chip { font-size: 11px; padding: 6px 10px; border-radius: 6px; margin-bottom: 5px; background: rgba(255,255,255,0.05); border-left: 2px solid #444; color: #ddd; }
-        .c-sh { border-color: #10B981; color: #A7F3D0; background: rgba(16, 185, 129, 0.1); }
-        .c-teca { border-color: #8B5CF6; color: #E9D5FF; background: rgba(139, 92, 246, 0.1); }
-        .c-special { border-color: #D9890D; color: #FEF3C7; background: rgba(217, 137, 13, 0.1); }
-        .c-fer { border-color: #EF4444; color: #FECACA; background: rgba(239, 68, 68, 0.1); }
-        .c-off { border-color: #666; color: #888; border-style: dashed; }
 
-        @keyframes popIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
-        .loading-dots:after { content: ' .'; animation: dots 1s steps(5, end) infinite; }
+        .day-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.06);
+            border-color: #D1D5DB;
+            z-index: 10;
+        }
+
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .day-number {
+            font-family: 'Manrope', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        /* Estados do Dia */
+        .is-today {
+            border: 2px solid var(--brand-green);
+            background-color: #F0FDF4; /* Verde muito claro */
+        }
+        .is-today .day-number { color: var(--brand-green); }
+        
+        .today-badge {
+            background: var(--brand-green);
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 100px;
+            text-transform: uppercase;
+        }
+
+        .is-past {
+            background-color: #F9FAFB;
+            opacity: 0.8; 
+        }
+        .is-past .day-number { color: #9CA3AF; }
+        
+        .other-month {
+            opacity: 0.3;
+            background: none;
+            border-style: dashed;
+            pointer-events: none;
+        }
+
+        /* Chips de Eventos (Pills) */
+        .event-list { display: flex; flex-direction: column; gap: 6px; }
+        
+        .chip {
+            font-size: 11px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-weight: 600;
+            line-height: 1.35;
+            border-left: 3px solid transparent;
+            display: flex; align-items: center; gap: 6px;
+        }
+
+        /* Variantes de Chips (Cores Claras e Legíveis) */
+        .c-sh { background: var(--evt-sh-bg); color: var(--evt-sh-txt); border-color: var(--evt-sh-bor); }
+        .c-teca { background: var(--evt-teca-bg); color: var(--evt-teca-txt); border-color: var(--evt-teca-bor); }
+        .c-special { background: var(--evt-esp-bg); color: var(--evt-esp-txt); border-color: var(--evt-esp-bor); }
+        .c-feriado { background: var(--evt-fer-bg); color: var(--evt-fer-txt); border-color: var(--evt-fer-bor); }
+        .c-off { background: var(--evt-off-bg); color: var(--evt-off-txt); border-color: var(--evt-off-bor); text-decoration: line-through; opacity: 0.7; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .loading-dots::after { content: ' .'; animation: dots 1s steps(5, end) infinite; }
         @keyframes dots { 0%, 20% { color: rgba(0,0,0,0); } 40% { color: white; } 100% { color: white; } }
+
     </style>
 </head>
 <body>
-    <div class="ambient-light" style="top: -20%; right: -10%;"></div>
 
     <div class="sidebar">
-        <div class="brand"><i class="ph-fill ph-sparkle" style="color:var(--primary)"></i> Awake AI</div>
-        
-        <div class="chat-history" id="chatHistory">
-            <div class="msg msg-ai">
-                <div class="ai-name">Assistente</div>
-                Olá! Pode me pedir alterações. Ex: "Troca a aula do dia 20 pela Pat".
+        <div class="brand-area">
+            <div class="logo">
+                <i class="ph-fill ph-circles-three-plus"></i> AWAKE OS
             </div>
         </div>
 
-        <div class="input-area">
+        <div class="chat-container">
+            <div class="chat-history" id="chatHistory">
+                <div class="msg msg-ai">
+                    <div class="ai-label">Assistente</div>
+                    Olá! O calendário de 2026 está carregado. Pode me pedir qualquer alteração.
+                </div>
+            </div>
+        </div>
+
+        <div class="input-box">
             <div class="input-wrapper">
-                <input type="text" id="userInput" class="chat-input" placeholder="Digite aqui..." onkeypress="if(event.key==='Enter') sendMessage()">
-                <button class="send-btn" onclick="sendMessage()"><i class="ph-bold ph-paper-plane-right"></i></button>
+                <input type="text" id="userInput" class="cmd-input" placeholder="Ex: Dia 20 Workshop..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <i class="ph-bold ph-paper-plane-right send-icon" onclick="sendMessage()"></i>
             </div>
         </div>
     </div>
@@ -118,30 +347,54 @@
     <div class="main">
         <div class="header">
             <div>
-                <div style="font-family:'JetBrains Mono'; font-size:12px; color:var(--text-sec); letter-spacing:2px; margin-bottom:5px;">2026</div>
-                <div class="month-title" id="monthTitle">JANEIRO</div>
+                <span class="month-title" id="monthTitle">JANEIRO</span>
+                <span class="year-label">2026</span>
             </div>
-            <div>
-                <button onclick="changeMonth(-1)" style="background:none; border:1px solid #333; color:white; padding:10px; border-radius:8px; cursor:pointer;"><</button>
-                <button onclick="changeMonth(1)" style="background:none; border:1px solid #333; color:white; padding:10px; border-radius:8px; cursor:pointer;">></button>
+            <div class="nav-actions">
+                <button class="btn-nav" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></button>
+                <button class="btn-nav" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></button>
             </div>
         </div>
 
-        <div class="calendar-grid" id="grid"></div>
+        <div class="calendar-wrapper">
+            <div class="grid-header">
+                <div class="weekday">DOM</div>
+                <div class="weekday">SEG</div>
+                <div class="weekday">TER</div>
+                <div class="weekday">QUA</div>
+                <div class="weekday">QUI</div>
+                <div class="weekday">SEX</div>
+                <div class="weekday">SÁB</div>
+            </div>
+            <div class="grid-body" id="calendarGrid">
+                </div>
+        </div>
     </div>
 
     <script>
         const MONTHS = ["", "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
         let currMonth = new Date().getMonth() + 1;
-        if(new Date().getFullYear() != 2026) currMonth = 1;
+        // Força início em Janeiro se não estiver em 2026
+        if(new Date().getFullYear() !== 2026) currMonth = 1;
+        
         let dbEvents = [];
 
+        // Feriados 2026
         const FERIADOS = {
-            "2026-01-01": "Confraternização", "2026-01-25": "Aniversário SP", "2026-02-17": "Carnaval",
-            "2026-04-03": "Sexta Santa", "2026-04-21": "Tiradentes", "2026-05-01": "Trabalhador",
-            "2026-06-04": "Corpus Christi", "2026-07-09": "Rev. 32", "2026-09-07": "Independência",
-            "2026-10-12": "N. Sra. Aparecida", "2026-11-02": "Finados", "2026-11-15": "Proclamação",
-            "2026-11-20": "Consciência", "2026-12-25": "Natal"
+            "2026-01-01": "Confraternização Universal",
+            "2026-01-25": "Aniversário de SP",
+            "2026-02-17": "Carnaval",
+            "2026-04-03": "Sexta-feira Santa",
+            "2026-04-21": "Tiradentes",
+            "2026-05-01": "Dia do Trabalhador",
+            "2026-06-04": "Corpus Christi",
+            "2026-07-09": "Rev. Constitucionalista",
+            "2026-09-07": "Independência",
+            "2026-10-12": "N. Sra. Aparecida",
+            "2026-11-02": "Finados",
+            "2026-11-15": "Proclamação",
+            "2026-11-20": "Consciência Negra",
+            "2026-12-25": "Natal"
         };
 
         async function init() {
@@ -151,10 +404,10 @@
 
         async function loadEvents() {
             try {
-                let r = await fetch('/api/get_events');
-                dbEvents = await r.json();
+                const res = await fetch('/api/get_events');
+                dbEvents = await res.json();
                 render();
-            } catch(e) { console.error(e); }
+            } catch(e) { console.error("Erro dados", e); }
         }
 
         async function sendMessage() {
@@ -179,7 +432,7 @@
                     addMsg(data.reply, 'ai');
                     if(data.actions_count > 0) await loadEvents();
                 } else {
-                    addMsg("Erro: " + data.reply, 'ai');
+                    addMsg("Tive um problema técnico: " + data.reply, 'ai');
                 }
             } catch(e) {
                 document.getElementById(loadingId).remove();
@@ -193,70 +446,97 @@
             const id = 'msg-' + Date.now();
             div.id = id;
             div.className = `msg msg-${type}`;
-            div.innerHTML = type === 'ai' ? `<div class="ai-name">Assistente</div>${html}` : html;
+            div.innerHTML = type === 'ai' ? `<div class="ai-label">Assistente</div>${html}` : html;
             box.appendChild(div);
             box.scrollTop = box.scrollHeight;
             if(returnId) return id;
         }
 
         function render() {
-            const grid = document.getElementById('grid');
+            const grid = document.getElementById('calendarGrid');
             document.getElementById('monthTitle').innerText = MONTHS[currMonth];
             grid.innerHTML = "";
 
-            ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].forEach(d => {
-                grid.innerHTML += `<div class="weekday">${d}</div>`;
-            });
-
-            const firstDay = new Date(2026, currMonth-1, 1).getDay();
+            const firstDay = new Date(2026, currMonth - 1, 1).getDay();
             const daysInMonth = new Date(2026, currMonth, 0).getDate();
             const today = new Date();
+            const isYear2026 = today.getFullYear() === 2026;
 
-            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="day-card" style="opacity:0.1"></div>`;
+            // Empty slots
+            for (let i = 0; i < firstDay; i++) {
+                grid.innerHTML += `<div class="day-card other-month"></div>`;
+            }
 
-            for(let d=1; d<=daysInMonth; d++) {
-                const dateObj = new Date(2026, currMonth-1, d);
+            // Days
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(2026, currMonth - 1, d);
                 const dateStr = dateObj.toISOString().split('T')[0];
-                const wd = dateObj.getDay();
-                let isToday = (d === today.getDate() && currMonth === (today.getMonth()+1) && today.getFullYear() === 2026);
+                const wd = dateObj.getDay(); // 0=Dom ... 6=Sab
+
+                let isToday = (isYear2026 && d === today.getDate() && currMonth === (today.getMonth()+1));
+                let isPast = dateObj < today;
+
+                // Build HTML
+                let contentHTML = "";
+
+                // 1. Exceção do Banco
+                const exc = dbEvents.find(e => e.data === dateStr);
                 
-                let html = "";
-                let exc = dbEvents.find(e => e.data === dateStr);
-                
-                if(exc) {
-                    if(exc.tipo === 'recesso') html += `<div class="chip c-off">💤 ${exc.descricao}</div>`;
-                    else if(exc.tipo === 'cancelado') html += `<div class="chip c-off">Cancelado</div>`;
-                    else html += `<div class="chip c-special">★ ${exc.descricao}</div>`;
-                } else if(FERIADOS[dateStr]) {
-                    html += `<div class="chip c-fer">🎈 ${FERIADOS[dateStr]}</div>`;
-                } else {
-                    if(wd===1 && ![1,7].includes(currMonth)) html += `<div class="chip c-teca">Talk Med.</div>`;
+                if (exc) {
+                    if (exc.tipo === 'recesso') {
+                        contentHTML += `<div class="chip c-off">💤 ${exc.descricao}</div>`;
+                    } else if (exc.tipo === 'cancelado') {
+                        contentHTML += `<div class="chip c-off">Cancelado</div>`;
+                    } else {
+                        // Especial
+                        contentHTML += `<div class="chip c-special">★ ${exc.descricao}</div>`;
+                    }
+                } 
+                // 2. Feriado
+                else if (FERIADOS[dateStr]) {
+                    contentHTML += `<div class="chip c-feriado">🎈 ${FERIADOS[dateStr]}</div>`;
+                }
+                // 3. Padrão
+                else {
+                    // Regra Teca
+                    if (wd === 1 && ![1, 7].includes(currMonth)) {
+                        contentHTML += `<div class="chip c-teca">08h15 Talk Med.</div>`;
+                    }
                     
+                    // Regra Sound Healing
                     let sh = "";
-                    if(wd===0) sh="19h SH (Haran)";
-                    if(wd===1) sh="19h SH (Karina)";
-                    if(wd===2) sh="19h SH (Pat)";
-                    if(wd===3) sh="19h SH (Pat)";
-                    if(wd===4) sh="19h SH (Haran)";
-                    if(wd===5) sh="10h SH (Karina)";
-                    if(sh) html += `<div class="chip c-sh">${sh}</div>`;
+                    if (wd === 0) sh = "19h SH (Haran)";
+                    if (wd === 1) sh = "19h SH (Karina)";
+                    if (wd === 2) sh = "19h SH (Pat)";
+                    if (wd === 3) sh = "19h SH (Pat)";
+                    if (wd === 4) sh = "19h SH (Haran)";
+                    if (wd === 5) sh = "10h SH (Karina)";
+                    
+                    if (sh) contentHTML += `<div class="chip c-sh">${sh}</div>`;
                 }
 
-                let badge = isToday ? `<span class="today-tag">HOJE</span>` : '';
-                let cls = isToday ? 'is-today' : '';
-                
+                // Classes
+                const todayClass = isToday ? 'is-today' : '';
+                const pastClass = (isPast && !isToday) ? 'is-past' : '';
+                const badge = isToday ? '<span class="today-badge">HOJE</span>' : '';
+
                 grid.innerHTML += `
-                <div class="day-card ${cls}">
-                    <div class="day-num">${d}${badge}</div>
-                    <div>${html}</div>
+                <div class="day-card ${todayClass} ${pastClass}">
+                    <div class="day-header">
+                        <div class="day-number">${d}</div>
+                        ${badge}
+                    </div>
+                    <div class="event-list">
+                        ${contentHTML}
+                    </div>
                 </div>`;
             }
         }
 
-        function changeMonth(dir) {
-            currMonth += dir;
-            if(currMonth > 12) currMonth = 1;
-            if(currMonth < 1) currMonth = 12;
+        function changeMonth(delta) {
+            currMonth += delta;
+            if (currMonth > 12) currMonth = 1;
+            if (currMonth < 1) currMonth = 12;
             render();
         }
 
