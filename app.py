@@ -23,7 +23,8 @@ SP_TZ = pytz.timezone('America/Sao_Paulo')
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    # Passamos as chaves para o HTML para o Login funcionar
+    return render_template('index.html', supabase_url=SUPABASE_URL, supabase_key=SUPABASE_KEY)
 
 @app.route('/api/get_events', methods=['GET'])
 def get_events():
@@ -39,36 +40,29 @@ def chat_with_ai():
 
     data = request.json
     user_message = data.get('text', '')
-    # Recebe o histórico da conversa (lista de mensagens anteriores)
-    history = data.get('history', []) 
+    history = data.get('history', [])
     
     hoje = datetime.now(SP_TZ)
     hoje_str = hoje.strftime("%Y-%m-%d (%A)")
     
-    # Prompt do Sistema (A personalidade e as regras)
     system_prompt = f"""
     Você é a IA do Calendário Awake. Hoje é {hoje_str}. Ano base: 2026.
     
     SUA TAREFA:
-    1. Acompanhar a conversa e entender o contexto das mensagens anteriores.
-    2. Identificar datas relativas (ex: "amanhã", "próxima sexta") com base em {hoje_str}.
-    3. Extrair a intenção: 'especial' (criar aula/evento), 'recesso' (bloquear dia), 'cancelado' (remover).
-    4. Formatar descrição: "Horário Atividade (Instrutor)". Ex: "19h Yoga (Pat)".
-    
-    IMPORTANTE: Responda APENAS com um JSON válido.
-    Se o usuário apenas estiver conversando (sem pedir alteração), mande "actions": [].
+    1. Acompanhar o contexto.
+    2. Identificar datas relativas com base em {hoje_str}.
+    3. Intenções: 'especial' (criar), 'recesso' (bloquear), 'cancelado' (remover).
+    4. Formatar: "Horário Atividade (Instrutor)".
     
     JSON SCHEMA:
     {{
-        "reply": "Sua resposta natural em português, considerando o contexto.",
+        "reply": "Resposta natural em português.",
         "actions": [
-            {{ "date": "YYYY-MM-DD", "type": "especial/recesso/cancelado", "description": "Descrição curta" }}
+            {{ "date": "YYYY-MM-DD", "type": "especial/recesso/cancelado", "description": "Descrição" }}
         ]
     }}
     """
 
-    # Monta a lista completa de mensagens para a IA
-    # 1. Sistema (Regras) + 2. Histórico (Contexto) + 3. Mensagem Atual
     messages_payload = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": user_message}]
 
     try:
@@ -80,28 +74,40 @@ def chat_with_ai():
             response_format={"type": "json_object"}
         )
 
-        response_content = completion.choices[0].message.content
-        ai_data = json.loads(response_content)
-        
+        ai_data = json.loads(completion.choices[0].message.content)
         reply_text = ai_data.get("reply", "Feito.")
         actions = ai_data.get("actions", [])
         
-        count = 0
+        valid_count = 0
+        
+        # --- CAMADA DE SEGURANÇA E VALIDAÇÃO ---
         for action in actions:
             try:
+                # 1. Valida Data
+                dt_obj = datetime.strptime(action['date'], "%Y-%m-%d")
+                if dt_obj.year != 2026: continue # Ignora anos errados
+
+                # 2. Valida Tipo
+                tipo_safe = action['type']
+                if tipo_safe not in ['especial', 'recesso', 'cancelado']: tipo_safe = 'especial'
+
+                # 3. Valida Descrição (Anti-Vazio)
+                desc = action['description'].strip()
+                if not desc and tipo_safe != 'cancelado': desc = "Evento sem nome"
+
                 supabase.table("excecoes").upsert({
                     "data": action['date'],
-                    "tipo": action['type'],
-                    "descricao": action['description']
+                    "tipo": tipo_safe,
+                    "descricao": desc
                 }).execute()
-                count += 1
+                valid_count += 1
             except Exception as e:
-                print(f"Erro DB: {e}")
+                print(f"Bloqueio de Segurança (Dado inválido): {e}")
 
         return jsonify({
             "ok": True,
             "reply": reply_text,
-            "actions_count": count
+            "actions_count": valid_count
         })
 
     except Exception as e:
