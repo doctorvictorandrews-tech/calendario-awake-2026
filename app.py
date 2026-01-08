@@ -96,48 +96,54 @@ def chat():
     if not GROQ_API_KEY: return jsonify({"ok": False, "reply": "Erro API."})
     d = request.json
     user_msg = d['text']
-    history = d.get('history', [])[-5:] # OTIMIZAÇÃO: Mantém apenas as últimas 5 mensagens para economizar tokens
+    
+    # Mantém contexto curto para economizar, mas suficiente para conversa
+    history = d.get('history', [])[-6:] 
     user_name = d.get('user', 'Usuário')
     
     hoje = datetime.now(SP_TZ).strftime("%Y-%m-%d (%A)")
     
-    # 1. OTIMIZAÇÃO DE CONTEXTO
     try:
-        # Pega apenas dados futuros ou recentes para não lotar a memória da IA
-        # (Aqui simplificado pegando tudo, mas limitando caracteres se for gigante)
+        # Pega contexto do banco (Otimizado: Apenas descrições para economizar tokens)
         db_data = supabase.table("excecoes").select("data, descricao").execute().data
-        db_context = json.dumps(db_data)
-        if len(db_context) > 6000: db_context = db_context[-6000:] # Corta se for muito grande
-    except: db_context = "[]"
+        # Transforma em string resumida
+        db_context = "\n".join([f"{item['data']}: {item['descricao']}" for item in db_data])
+        if len(db_context) > 4000: db_context = db_context[-4000:] 
+    except: db_context = ""
 
     sys_prompt = f"""
-    Você é a IA do "Awake Calendar 2026". Hoje: {hoje}.
+    Você é a IA Sênior do "Awake Calendar 2026". Hoje: {hoje}.
     
-    >>> AGENDA PADRÃO:
+    >>> OBJETIVO:
+    Ser uma assistente EXTREMAMENTE inteligente, profunda e útil.
+    1. Se o usuário quiser conversar (filosofia, ideias, textos, dúvidas), use TODO o seu conhecimento. Seja criativa, detalhista e humana.
+    2. Se o usuário falar de DATAS ou AGENDA, ative o modo "Gerente" e siga as regras abaixo rigorosamente.
+    
+    >>> AGENDA PADRÃO (FIXA):
     - Seg: 19h SH (Haran)
     - Ter: 08h15 Talk Med. (Teca) | 19h SH (Karina)
     - Qua/Qui: 19h SH (Pat)
     - Sex: 10h SH (Haran)
     - Sáb: 10h SH (Karina) | 15h SH (Karina)
     
-    >>> MUDANÇAS: {db_context}
+    >>> EXCEÇÕES JÁ MARCADAS:
+    {db_context}
     
-    >>> REGRAS:
-    1. Responda conversa fiada normalmente (sem actions).
-    2. Se for alterar agenda, gere JSON.
-    3. Tipos: 'c-fer' (Feriado - só titulo), 'c-sh' (Verde), 'c-teca' (Roxo), 'c-esp' (Amarelo).
+    >>> REGRAS DE RETORNO:
+    - Conversa normal? -> JSON com "actions": [] e sua resposta inteligente em "reply".
+    - Alteração na agenda? -> JSON preenchendo "actions".
     
-    >>> JSON OUTPUT:
+    >>> SCHEMA JSON (Use exatamente este formato):
     {{
-        "reply": "Resposta...",
+        "reply": "Sua resposta aqui...",
         "actions": [
             {{
                 "date": "YYYY-MM-DD",
                 "action": "create" (ou "cancel"),
                 "type": "c-esp",
-                "time": "HH:MM",
                 "title": "Titulo",
                 "instructor": "Nome",
+                "time": "HH:MM",
                 "details": "HTML opcional"
             }}
         ]
@@ -145,18 +151,19 @@ def chat():
     """
 
     try:
-        # MUDANÇA DE MODELO: Usando o 8b-instant para economizar limite e ser mais rápido
+        # O PULO DO GATO: Trocamos para o Mixtral 8x7b.
+        # Ele é muito mais inteligente que o 8b e mais eficiente que o 70b.
         comp = client.chat.completions.create(
-            model="llama-3.1-8b-instant", 
+            model="mixtral-8x7b-32768", 
             messages=[{"role":"system","content":sys_prompt}] + history + [{"role":"user","content":user_msg}], 
             response_format={"type":"json_object"}, 
-            temperature=0.2
+            temperature=0.6 # Aumentei um pouco para ele ser mais criativo nas conversas
         )
         
         raw = comp.choices[0].message.content
         ai_resp = extract_json_from_text(raw)
         
-        if not ai_resp: return jsonify({"ok":True, "reply": "Erro técnico na resposta da IA. Tente novamente."})
+        if not ai_resp: return jsonify({"ok":True, "reply": "Tive um lapso momentâneo. Pode repetir?"})
 
         cnt = 0
         for a in ai_resp.get('actions',[]):
@@ -192,10 +199,9 @@ def chat():
             
         return jsonify({"ok":True, "reply": ai_resp.get("reply", "Feito."), "actions_count":cnt})
     except Exception as e: 
-        # Captura erro de Rate Limit específico para avisar você
         err_msg = str(e)
         if "429" in err_msg:
-            return jsonify({"ok":False, "reply": "⚠️ Limite diário da IA atingido. Espere alguns minutos ou use a edição manual."})
+            return jsonify({"ok":False, "reply": "⚠️ Minha capacidade diária de processamento máximo atingiu o limite. Aguarde um pouco."})
         return jsonify({"ok":False, "reply":f"Erro: {err_msg}"})
 
 if __name__ == '__main__': app.run(debug=True)
