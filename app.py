@@ -44,7 +44,8 @@ def get_events():
         response = supabase.table("excecoes").select("*").execute()
         return jsonify(response.data)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # ISSO VAI MOSTRAR O ERRO REAL NA TELA
+        return jsonify({"ok": False, "reply": f"ERRO TÉCNICO: {str(e)}"})
 
 @app.route('/api/chat', methods=['POST'])
 def chat_with_ai():
