@@ -3,5 +3,4 @@ supabase
 python-dotenv
 gunicorn
 pytz
-dateparser
-unidecode
+google-generativeai
