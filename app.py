@@ -3,27 +3,36 @@ import json
 import pytz
 from flask import Flask, render_template, request, jsonify
 from supabase import create_client
-from datetime import datetime, date
+from datetime import datetime
 import google.generativeai as genai
 
 app = Flask(__name__)
 
-# --- CONFIGURAÇÃO (LÊ DO RAILWAY) ---
+# --- CONFIGURAÇÃO ---
+# Se as chaves não existirem, o app não quebra, mas avisa nos logs
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 
-# Inicializa Clientes
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-genai.configure(api_key=GOOGLE_API_KEY)
+# Inicializa Supabase
+try:
+    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+except Exception as e:
+    print(f"Erro Supabase: {e}")
 
-# Configuração da IA (Gemini)
+# Inicializa Google Gemini
+try:
+    genai.configure(api_key=GOOGLE_API_KEY)
+except Exception as e:
+    print(f"Erro Google AI: {e}")
+
+# Configuração Rígida para JSON
 generation_config = {
-    "temperature": 0.4,
+    "temperature": 0.5,
     "top_p": 0.95,
     "top_k": 64,
     "max_output_tokens": 8192,
-    "response_mime_type": "application/json",
+    "response_mime_type": "application/json", # Força a IA a falar "código"
 }
 
 model = genai.GenerativeModel(
@@ -40,69 +49,61 @@ def home():
 @app.route('/api/get_events', methods=['GET'])
 def get_events():
     try:
-        # Busca eventos do banco
         response = supabase.table("excecoes").select("*").execute()
         return jsonify(response.data)
     except Exception as e:
-        # ISSO VAI MOSTRAR O ERRO REAL NA TELA
-        return jsonify({"ok": False, "reply": f"ERRO TÉCNICO: {str(e)}"})
+        return jsonify([]) # Retorna lista vazia em caso de erro para não travar o front
 
 @app.route('/api/chat', methods=['POST'])
 def chat_with_ai():
+    # Verifica se a chave existe antes de tentar
+    if not GOOGLE_API_KEY:
+        return jsonify({"ok": False, "reply": "ERRO CRÍTICO: Chave GOOGLE_API_KEY não encontrada no Railway."})
+
     data = request.json
     user_message = data.get('text', '')
-    # Opcional: passar o mês que o usuário está vendo para contexto
-    current_view_month = data.get('month', datetime.now(SP_TZ).month)
     
     hoje = datetime.now(SP_TZ)
     hoje_str = hoje.strftime("%Y-%m-%d (%A)")
     
-    # --- O PROMPT MESTRE ---
+    # Prompt Blindado
     system_instruction = f"""
-    Você é a IA Gerente do Calendário da 'Awake Health'. 
-    Hoje é {hoje_str}. O ano de referência é 2026.
+    Atue como a IA do Calendário Awake. Hoje: {hoje_str}. Ano base: 2026.
     
-    SUA MISSÃO:
-    1. Ler a mensagem do usuário.
-    2. Identificar datas (se ele disser "amanhã", "dia 20", "terça que vem", calcule baseado em {hoje_str} e no ano 2026).
-    3. Extrair ações de agendamento.
-    4. Responder de forma natural e amigável.
-
-    TIPOS DE AÇÃO:
-    - 'especial': Aulas, workshops, rituais (Ex: "19h Yoga (Pat)").
-    - 'recesso': Feriados ou folgas.
-    - 'cancelado': Remover uma aula existente.
-
-    REGRAS DE FORMATAÇÃO:
-    - Sempre formate a descrição da aula como: "Horário Atividade (Instrutor)". Ex: "19h Sound Healing (Haran)".
-    - Se não houver horário, coloque apenas a atividade.
-    - Se for cancelamento, a descrição deve ser "CANCELADO".
+    1. Identifique datas relativas (amanhã, próxima terça) baseadas em {hoje_str}.
+    2. Ações possíveis: 'especial' (aulas/eventos), 'recesso', 'cancelado'.
+    3. Descrição: "Horário Atividade (Instrutor)".
     
-    RESPOSTA OBRIGATÓRIA EM JSON:
+    IMPORTANTE: Responda SOMENTE em JSON seguindo este esquema exato:
     {{
-        "reply": "Sua resposta falada aqui...",
+        "reply": "Texto da resposta para o usuário",
         "actions": [
-            {{
-                "date": "YYYY-MM-DD",
-                "type": "especial" | "recesso" | "cancelado",
-                "description": "Descrição formatada"
-            }}
+            {{ "date": "YYYY-MM-DD", "type": "string", "description": "string" }}
         ]
     }}
     """
 
     try:
-        # 1. Envia para o Google
+        # Envio para o Google
         chat = model.start_chat(history=[])
-        response = chat.send_message(f"{system_instruction}\n\nUSER: {user_message}")
+        response = chat.send_message(f"{system_instruction}\n\nUSUÁRIO DIZ: {user_message}")
         
-        # 2. Interpreta o JSON
-        ai_data = json.loads(response.text)
-        reply_text = ai_data.get("reply", "Entendido.")
+        # Debug no Log do Railway (Para você ver o que a IA respondeu)
+        print(f"RESPOSTA IA RAW: {response.text}")
+
+        # Tenta ler o JSON
+        try:
+            ai_data = json.loads(response.text)
+        except:
+            # Se falhar o JSON, tenta limpar a string (às vezes vem com ```json no inicio)
+            clean_text = response.text.replace("```json", "").replace("```", "")
+            ai_data = json.loads(clean_text)
+
+        reply_text = ai_data.get("reply", "Feito.")
         actions = ai_data.get("actions", [])
         
-        # 3. Executa no Banco de Dados
-        success_count = 0
+        # Executa no Banco
+        count = 0
         for action in actions:
             try:
                 supabase.table("excecoes").upsert({
@@ -110,18 +111,21 @@ def chat_with_ai():
                     "tipo": action['type'],
                     "descricao": action['description']
                 }).execute()
-                success_count += 1
-            except:
-                continue
+                count += 1
+            except Exception as e:
+                print(f"Erro ao salvar no banco: {e}")
 
         return jsonify({
             "ok": True,
             "reply": reply_text,
-            "actions_count": success_count
+            "actions_count": count
         })
 
     except Exception as e:
-        return jsonify({"ok": False, "reply": "Desculpe, tive um erro de conexão com o cérebro da IA."})
+        # AQUI ESTÁ A CORREÇÃO: Mostra o erro real para você
+        error_msg = str(e)
+        print(f"ERRO PYTHON: {error_msg}")
+        return jsonify({"ok": False, "reply": f"ERRO TÉCNICO: {error_msg}"})
 
 if __name__ == '__main__':
     app.run(debug=True)
