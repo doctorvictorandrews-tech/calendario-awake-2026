@@ -20,6 +20,17 @@ except: pass
 
 SP_TZ = pytz.timezone('America/Sao_Paulo')
 
+# AGENDA PADRÃO (A "Matriz" que a IA precisa conhecer)
+AGENDA_PADRAO = {
+    0: [], # Domingo
+    1: [{"time": "19:00", "title": "Sound Healing", "instructor": "Haran"}], # Seg
+    2: [{"time": "08:15", "title": "Talk Meditation", "instructor": "Teca"}, {"time": "19:00", "title": "Sound Healing", "instructor": "Karina"}], # Ter
+    3: [{"time": "19:00", "title": "Sound Healing", "instructor": "Pat"}], # Qua
+    4: [{"time": "19:00", "title": "Sound Healing", "instructor": "Pat"}], # Qui
+    5: [{"time": "10:00", "title": "Sound Healing", "instructor": "Haran"}], # Sex
+    6: [{"time": "10:00", "title": "Sound Healing", "instructor": "Karina"}, {"time": "15:00", "title": "Sound Healing", "instructor": "Karina"}] # Sab
+}
+
 @app.route('/')
 def home(): return render_template('index.html')
 
@@ -58,9 +69,10 @@ def save_day():
         prev = exist.data[0] if exist.data else None
         
         if not evs:
-            supabase.table("excecoes").upsert({"data":dt, "tipo":"cancelado", "descricao":"Limpo", "detalhes":""}).execute()
+            # Se a lista veio vazia, é cancelamento total do dia
+            supabase.table("excecoes").upsert({"data":dt, "tipo":"cancelado", "descricao":"Cancelado", "detalhes":""}).execute()
         else:
-            # Gera descrição visual simples para o banco
+            # Gera descrição visual simples
             visuais = []
             for e in evs:
                 if e.get('type') in ['c-fer', 'c-com', 'c-off']:
@@ -80,6 +92,7 @@ def save_day():
         return jsonify({"ok":True})
     except Exception as e: return jsonify({"ok":False,"msg":str(e)})
 
+# --- INTELIGÊNCIA ARTIFICIAL BLINDADA ---
 @app.route('/api/chat', methods=['POST'])
 def chat():
     if not GROQ_API_KEY: return jsonify({"ok": False, "reply": "Erro API."})
@@ -88,87 +101,130 @@ def chat():
     history = d.get('history', [])
     user_name = d.get('user', 'Usuário')
     
-    hoje = datetime.now(SP_TZ).strftime("%Y-%m-%d (%A)")
+    hoje_dt = datetime.now(SP_TZ)
+    hoje_str = hoje_dt.strftime("%Y-%m-%d (%A)")
     
+    # 1. RECUPERA CONTEXTO DO BANCO (O que já mudou)
     try:
-        current_data = supabase.table("excecoes").select("data, descricao, tipo").execute().data
-        db_context = json.dumps(current_data)
-    except: db_context = "[]"
+        db_data = supabase.table("excecoes").select("data, descricao, tipo").execute().data
+        # Otimização: Transforma em dicionário para o prompt ficar menor e mais limpo
+        db_summary = {item['data']: item['descricao'] for item in db_data}
+        db_context_str = json.dumps(db_summary, indent=2)
+    except:
+        db_context_str = "{}"
 
+    # 2. PROMPT DE ENGENHARIA (O CÉREBRO)
     sys_prompt = f"""
-    Você é a IA Assistente do "Calendário Awake 2026". Hoje: {hoje}.
+    Você é a IA Gerente do Awake Calendar. Hoje é {hoje_str}. Ano 2026.
     
-    >>> SEU PAPEL:
-    1. Você é uma assistente geral e amigável. Pode conversar sobre a vida, filosofia ou dúvidas gerais.
-    2. Você é a guardiã do calendário.
+    >>> SEU CONHECIMENTO DO TEMPO (AGENDA PADRÃO FIXA):
+    - Segunda: 19h SH (Haran)
+    - Terça: 08h15 Talk Med. (Teca) [exceto Jan/Jul] | 19h SH (Karina)
+    - Quarta: 19h SH (Pat)
+    - Quinta: 19h SH (Pat)
+    - Sexta: 10h SH (Haran)
+    - Sábado: 10h SH (Karina) | 15h SH (Karina)
+    - Domingo: Livre
     
-    >>> AGENDA PADRÃO (Matriz Fixa):
-    - Seg: 19h SH (Haran)
-    - Ter: 08h15 Talk Med. (Teca) | 19h SH (Karina)
-    - Qua/Qui: 19h SH (Pat)
-    - Sex: 10h SH (Haran)
-    - Sáb: 10h SH (Karina) | 15h SH (Karina)
+    >>> O QUE JÁ FOI ALTERADO (EXCEÇÕES NO BANCO):
+    {db_context_str}
     
-    >>> EXCEÇÕES NO BANCO: {db_context}
+    >>> SUAS REGRAS DE OURO:
+    1. INTELIGÊNCIA: Se o usuário pedir para cancelar algo, verifique na Agenda Padrão se existe. Se ele pedir para marcar num horário ocupado, avise.
+    2. CONVERSA: Se o usuário só der "Oi" ou perguntar algo, responda gentilmente e NÃO gere 'actions'.
+    3. COMANDOS: Só gere 'actions' se houver intenção clara de mudança na agenda.
+    4. DADOS: Feriados/Datas Comemorativas são apenas rótulos (não precisam de hora/instrutor). Experiências precisam.
     
-    >>> REGRAS DE AÇÃO (CRÍTICO):
-    - Se o usuário APENAS conversar ou tirar dúvida ("Que dia é hoje?", "Tem aula quarta?"), responda no campo 'reply' e deixe 'actions' como lista VAZIA []. NÃO CADASTRE NADA.
-    - Só gere 'actions' se houver uma ORDEM CLARA de modificação ("Marque...", "Cancele...", "Mude...").
-    - Se a ordem for ambígua, PERGUNTE antes de agir (retorne actions []).
-    
-    >>> DADOS:
-    - Feriados/Datas Comemorativas: Não precisam de hora/instrutor.
-    - Experiências (SH, Talk, Especial): PRECISAM de time, title, instructor.
-    
-    >>> OUTPUT JSON:
-    {{ 
-        "reply": "...", 
-        "actions": [ {{ "date": "YYYY-MM-DD", "type": "...", "time": "...", "title": "...", "instructor": "...", "rich_details": "..." }} ] 
+    >>> FORMATO DE RESPOSTA (JSON APENAS):
+    {{
+        "reply": "Texto de resposta para o usuário.",
+        "actions": [
+            {{
+                "date": "YYYY-MM-DD",
+                "action": "create" (ou "cancel" / "recess"),
+                "type": "c-sh" (para Sound Healing), "c-teca" (Talk), "c-esp" (Especial), "c-fer" (Feriado),
+                "time": "HH:MM",
+                "title": "Nome do Evento",
+                "instructor": "Nome",
+                "details": "Texto rico HTML (opcional)"
+            }}
+        ]
     }}
     """
 
     try:
-        comp = client.chat.completions.create(model="llama-3.3-70b-versatile", messages=[{"role":"system","content":sys_prompt}]+history+[{"role":"user","content":user_msg}], response_format={"type":"json_object"}, temperature=0.3)
+        comp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile", 
+            messages=[{"role":"system","content":sys_prompt}] + history + [{"role":"user","content":user_msg}], 
+            response_format={"type":"json_object"}, 
+            temperature=0.2 # Temperatura baixa = Mais precisão, menos erro
+        )
         ai_resp = json.loads(comp.choices[0].message.content)
         cnt = 0
         
-        # Só processa se tiver ações reais
-        for a in ai_resp.get('actions',[]):
+        # PROCESSAMENTO PYTHON (BLINDAGEM CONTRA ERRO DA IA)
+        for action in ai_resp.get('actions', []):
             try:
-                exist = supabase.table("excecoes").select("*").eq("data", a['date']).execute()
+                target_date = action.get('date')
+                act_type = action.get('action')
+                
+                # Snapshot para Undo
+                exist = supabase.table("excecoes").select("*").eq("data", target_date).execute()
                 prev = exist.data[0] if exist.data else None
                 
-                # Monta estrutura
-                structured_event = [{
-                    "time": a.get('time', ''),
-                    "title": a.get('title', 'Evento'),
-                    "instructor": a.get('instructor', ''),
-                    "details": a.get('rich_details', ''),
-                    "type": a.get('type', 'especial')
-                }]
+                payload = {}
                 
-                # Descrição visual simples
-                if a['type'] in ['c-fer', 'c-com', 'recesso']:
-                    desc_str = a.get('title', 'Evento')
-                else:
-                    desc_str = f"{a.get('time')} {a.get('title')} ({a.get('instructor')})"
-
-                payload = {
-                    "data": a['date'], 
-                    "tipo": a['type'], 
-                    "descricao": desc_str, 
-                    "detalhes": json.dumps(structured_event)
-                }
+                if act_type == 'cancel':
+                    payload = {"data": target_date, "tipo": "cancelado", "descricao": "Cancelado pela IA", "detalhes": ""}
                 
-                if a['type'] == 'cancelado':
-                    payload = {"data":a['date'], "tipo":"cancelado", "descricao":"Cancelado", "detalhes":""}
+                elif act_type in ['create', 'recess']:
+                    # O Python garante que a estrutura está correta, mesmo se a IA falhar
+                    clean_type = action.get('type', 'c-esp')
+                    clean_time = action.get('time', '')
+                    clean_title = action.get('title', 'Evento')
+                    clean_inst = action.get('instructor', '')
+                    clean_det = action.get('details', '')
+                    
+                    # Cria a lista de eventos estruturada
+                    structured_event = [{
+                        "time": clean_time,
+                        "title": clean_title,
+                        "instructor": clean_inst,
+                        "details": clean_det,
+                        "type": clean_type
+                    }]
+                    
+                    # Monta descrição visual
+                    if clean_type in ['c-fer', 'c-com', 'c-off']:
+                        vis_desc = clean_title
+                    else:
+                        vis_desc = f"{clean_time} {clean_title} ({clean_inst})"
+                        
+                    payload = {
+                        "data": target_date,
+                        "tipo": clean_type if act_type == 'create' else 'recesso',
+                        "descricao": vis_desc,
+                        "detalhes": json.dumps(structured_event)
+                    }
 
-                supabase.table("excecoes").upsert(payload).execute()
-                supabase.table("audit_logs").insert({"user_name":user_name, "target_date":a['date'], "action_summary":f"{a['type']} IA", "previous_state":prev}).execute()
-                cnt+=1
-            except: pass
-            
-        return jsonify({"ok":True, "reply": ai_resp.get("reply", "Feito."), "actions_count":cnt})
-    except Exception as e: return jsonify({"ok":False,"reply":str(e)})
+                if payload:
+                    supabase.table("excecoes").upsert(payload).execute()
+                    supabase.table("audit_logs").insert({
+                        "user_name": user_name,
+                        "target_date": target_date,
+                        "action_summary": f"IA: {act_type} - {action.get('title','')}",
+                        "previous_state": prev
+                    }).execute()
+                    cnt += 1
+                    
+            except Exception as loop_err:
+                print(f"Erro no loop da IA: {loop_err}")
+                continue
+
+        return jsonify({"ok":True, "reply": ai_resp.get("reply", "Processado."), "actions_count":cnt})
+
+    except Exception as e:
+        print(f"Erro Crítico IA: {e}")
+        return jsonify({"ok":False, "reply": "Desculpe, tive um erro técnico. Tente reformular."})
 
 if __name__ == '__main__': app.run(debug=True)
