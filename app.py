@@ -23,8 +23,7 @@ SP_TZ = pytz.timezone('America/Sao_Paulo')
 
 @app.route('/')
 def home():
-    # Passamos as chaves para o HTML para o Login funcionar
-    return render_template('index.html', supabase_url=SUPABASE_URL, supabase_key=SUPABASE_KEY)
+    return render_template('index.html')
 
 @app.route('/api/get_events', methods=['GET'])
 def get_events():
@@ -33,6 +32,40 @@ def get_events():
         return jsonify(response.data)
     except: return jsonify([])
 
+# --- ROTAS DE AUDITORIA (LOGS) ---
+@app.route('/api/get_logs', methods=['GET'])
+def get_logs():
+    try:
+        # Busca os últimos 50 logs para mostrar na aba Histórico
+        response = supabase.table("audit_logs").select("*").order("created_at", desc=True).limit(50).execute()
+        return jsonify(response.data)
+    except: return jsonify([])
+
+@app.route('/api/undo', methods=['POST'])
+def undo_action():
+    data = request.json
+    log_id = data.get('log_id')
+    try:
+        # 1. Pega o backup
+        log_res = supabase.table("audit_logs").select("*").eq("id", log_id).execute()
+        if not log_res.data: return jsonify({"ok": False})
+        
+        log_entry = log_res.data[0]
+        prev_state = log_entry['previous_state']
+        target_date = log_entry['target_date']
+        
+        # 2. Reverte
+        if prev_state:
+            if 'id' in prev_state: del prev_state['id']
+            supabase.table("excecoes").upsert(prev_state).execute()
+        else:
+            supabase.table("excecoes").delete().eq("data", target_date).execute()
+            
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "msg": str(e)})
+
+# --- CHAT INTELIGENTE ---
 @app.route('/api/chat', methods=['POST'])
 def chat_with_ai():
     if not GROQ_API_KEY:
@@ -41,6 +74,7 @@ def chat_with_ai():
     data = request.json
     user_message = data.get('text', '')
     history = data.get('history', [])
+    user_name = data.get('user', 'Anônimo') # Pega o nome do usuário
     
     hoje = datetime.now(SP_TZ)
     hoje_str = hoje.strftime("%Y-%m-%d (%A)")
@@ -48,15 +82,15 @@ def chat_with_ai():
     system_prompt = f"""
     Você é a IA do Calendário Awake. Hoje é {hoje_str}. Ano base: 2026.
     
-    SUA TAREFA:
-    1. Acompanhar o contexto.
-    2. Identificar datas relativas com base em {hoje_str}.
-    3. Intenções: 'especial' (criar), 'recesso' (bloquear), 'cancelado' (remover).
-    4. Formatar: "Horário Atividade (Instrutor)".
+    TAREFA:
+    1. Acompanhar contexto da conversa.
+    2. Identificar datas baseadas em {hoje_str}.
+    3. Ações: 'especial' (criar), 'recesso' (bloquear), 'cancelado' (limpar dia).
+    4. Formato: "Horário Atividade (Instrutor)".
     
     JSON SCHEMA:
     {{
-        "reply": "Resposta natural em português.",
+        "reply": "Resposta curta e natural.",
         "actions": [
             {{ "date": "YYYY-MM-DD", "type": "especial/recesso/cancelado", "description": "Descrição" }}
         ]
@@ -78,40 +112,44 @@ def chat_with_ai():
         reply_text = ai_data.get("reply", "Feito.")
         actions = ai_data.get("actions", [])
         
-        valid_count = 0
-        
-        # --- CAMADA DE SEGURANÇA E VALIDAÇÃO ---
+        count = 0
         for action in actions:
             try:
-                # 1. Valida Data
-                dt_obj = datetime.strptime(action['date'], "%Y-%m-%d")
-                if dt_obj.year != 2026: continue # Ignora anos errados
+                # 1. Validação Simples
+                if action['type'] not in ['especial', 'recesso', 'cancelado']: action['type'] = 'especial'
+                if not action['description'] and action['type'] != 'cancelado': action['description'] = "Evento"
 
-                # 2. Valida Tipo
-                tipo_safe = action['type']
-                if tipo_safe not in ['especial', 'recesso', 'cancelado']: tipo_safe = 'especial'
+                # 2. Auditoria (Snapshot do antes)
+                existing = supabase.table("excecoes").select("*").eq("data", action['date']).execute()
+                prev_state = existing.data[0] if existing.data else None
 
-                # 3. Valida Descrição (Anti-Vazio)
-                desc = action['description'].strip()
-                if not desc and tipo_safe != 'cancelado': desc = "Evento sem nome"
-
+                # 3. Executa
                 supabase.table("excecoes").upsert({
                     "data": action['date'],
-                    "tipo": tipo_safe,
-                    "descricao": desc
+                    "tipo": action['type'],
+                    "descricao": action['description']
                 }).execute()
-                valid_count += 1
+
+                # 4. Salva Log
+                supabase.table("audit_logs").insert({
+                    "user_name": user_name,
+                    "target_date": action['date'],
+                    "action_summary": f"{action['type']}: {action['description']}",
+                    "previous_state": prev_state
+                }).execute()
+
+                count += 1
             except Exception as e:
-                print(f"Bloqueio de Segurança (Dado inválido): {e}")
+                print(f"Erro DB: {e}")
 
         return jsonify({
             "ok": True,
             "reply": reply_text,
-            "actions_count": valid_count
+            "actions_count": count
         })
 
     except Exception as e:
-        return jsonify({"ok": False, "reply": f"Erro técnico: {str(e)}"})
+        return jsonify({"ok": False, "reply": f"Erro: {str(e)}"})
 
 if __name__ == '__main__':
     app.run(debug=True)
