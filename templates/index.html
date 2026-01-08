@@ -27,7 +27,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
 
-        /* MODAL EDITOR (Atualizado) */
+        /* MODAL EDITOR */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: center; }
         .modal-card { background: white; width: 550px; max-width: 90%; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; }
         .modal-header { padding: 20px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
@@ -247,7 +247,7 @@
             try { const r = await fetch('/api/get_events'); dbEvents = await r.json(); render(); } catch(e){}
         }
 
-        // --- EDITOR MANUAL (NOVO) ---
+        // --- EDITOR MANUAL ---
         function openEditor(dateStr) {
             currentEditingDate = dateStr;
             document.getElementById('editorDateDisplay').innerText = dateStr.split('-').reverse().join('/');
@@ -267,7 +267,7 @@
             const div = document.createElement('div');
             div.className = 'editor-item';
             
-            // Verifica qual option marcar
+            // Seletor Inteligente
             const sel = (val) => val === type ? 'selected' : '';
 
             div.innerHTML = `
@@ -275,14 +275,14 @@
                     <div class="ed-row">
                         <input type="text" class="ed-input" value="${desc}" placeholder="Título (Ex: 19h Yoga)">
                         <select class="ed-select">
-                            <option value="c-esp" ${sel('c-esp')}>★ Especial</option>
+                            <option value="c-esp" ${sel('c-esp')}>★ Especial (Amarelo)</option>
                             <option value="c-sh" ${sel('c-sh')}>♫ SH (Verde)</option>
                             <option value="c-teca" ${sel('c-teca')}>☸ Teca (Roxo)</option>
-                            <option value="c-off" ${sel('c-off')}>💤 Recesso</option>
-                            <option value="c-fer" ${sel('c-fer')}>🎈 Feriado</option>
+                            <option value="c-off" ${sel('c-off')}>💤 Recesso (Cinza)</option>
+                            <option value="c-fer" ${sel('c-fer')}>🎈 Feriado (Vermelho)</option>
                         </select>
                     </div>
-                    <textarea class="ed-area" placeholder="Detalhes ocultos...">${details || ''}</textarea>
+                    <textarea class="ed-area" placeholder="Detalhes ocultos, notas, checklist...">${details || ''}</textarea>
                 </div>
                 <div class="btn-del" onclick="this.parentElement.remove()"><i class="ph-bold ph-trash"></i></div>
             `;
@@ -308,9 +308,10 @@
         }
         function closeEditor() { document.getElementById('dayEditor').style.display = 'none'; }
 
-        // --- DOWNLOAD IMAGE ---
+        // --- DOWNLOAD ---
         function downloadImage() {
             const node = document.querySelector('.main');
+            // Hack para melhorar qualidade: aumenta a escala do canvas
             html2canvas(node, { scale: 2, backgroundColor: "#F8FAFC" }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `Awake_Calendar_${MONTHS[currMonth]}.png`;
@@ -319,9 +320,13 @@
             });
         }
 
-        // --- CORE LOGIC ---
+        // --- CORE LOGIC (SAFE DATE PARSING CORRIGIDO) ---
         function getEventsForDate(ds) {
-            const dt = new Date(ds);
+            // CORREÇÃO: Cria data como MEIO-DIA para evitar bug de fuso horário (-3h)
+            // '2026-01-01'.split('-') -> ['2026', '01', '01']
+            const p = ds.split('-'); 
+            const dt = new Date(p[0], p[1]-1, p[2], 12, 0, 0); 
+            
             const wd = dt.getDay(); 
             const m = dt.getMonth() + 1;
             let list = [];
@@ -338,7 +343,7 @@
                 return list;
             }
 
-            // Standard
+            // Standard Rules
             if(FERIADOS[ds]) list.push({ desc: (FERIADOS[ds].tipo==='fer'?'🎈 ':'📅 ') + FERIADOS[ds].nome, type: FERIADOS[ds].tipo==='fer'?'c-fer':'c-com' });
             if(wd===2 && ![1,7].includes(m)) list.push({ desc: "08h15 Talk Med. (Teca)", type: 'c-teca' });
             if(wd===1) list.push({ desc: "19h SH (Haran)", type: 'c-sh' });
@@ -362,7 +367,7 @@
             const g = document.getElementById('grid');
             document.getElementById('monthTitle').innerText = MONTHS[currMonth];
             g.innerHTML = "";
-            const f = new Date(2026, currMonth-1, 1).getDay();
+            const f = new Date(2026, currMonth-1, 1, 12, 0, 0).getDay();
             const tot = new Date(2026, currMonth, 0).getDate();
             const today = new Date();
             const is2026 = today.getFullYear() === 2026;
@@ -370,7 +375,11 @@
             for(let i=0; i<f; i++) if(window.innerWidth>768) g.innerHTML += `<div></div>`;
 
             for(let d=1; d<=tot; d++) {
-                const ds = new Date(2026, currMonth-1, d).toISOString().split('T')[0];
+                // Cria string YYYY-MM-DD segura
+                const mStr = currMonth.toString().padStart(2,'0');
+                const dStr = d.toString().padStart(2,'0');
+                const ds = `2026-${mStr}-${dStr}`;
+
                 const isT = (is2026 && d===today.getDate() && currMonth===(today.getMonth()+1));
                 
                 const events = getEventsForDate(ds);
@@ -385,7 +394,6 @@
             }
         }
         
-        // Logs/Undo/Chat functions (Minified to save space, logic same as before)
         async function loadLogs(){ try{ const r=await fetch('/api/get_logs'); const d=await r.json(); document.getElementById('logsList').innerHTML=d.map(l=>`<div class="log-item"><div><b>${l.user_name}</b> <span style="opacity:0.6">${l.action_summary}</span></div><button class="undo-btn" onclick="undo(${l.id})">DESFAZER</button></div>`).join(''); }catch{} }
         async function undo(id){ if(confirm("Desfazer?")){ await fetch('/api/undo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({log_id:id})}); await loadEvents(); loadLogs(); } }
         function switchTab(t){ document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active')); event.target.classList.add('active'); document.getElementById('chatView').style.display=t==='chat'?'flex':'none'; document.getElementById('historyView').style.display=t==='history'?'flex':'none'; if(t==='history')loadLogs(); }
