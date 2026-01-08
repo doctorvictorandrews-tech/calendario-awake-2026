@@ -3,4 +3,4 @@ supabase
 python-dotenv
 gunicorn
 pytz
-google-generativeai==0.8.3
+groq
