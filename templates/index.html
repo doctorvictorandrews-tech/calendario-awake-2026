@@ -10,11 +10,13 @@
     
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     
     <style>
-        /* --- DESIGN SYSTEM CLEAN --- */
+        /* --- DESIGN SYSTEM --- */
         :root {
             --bg-app: #F8FAFC; 
             --bg-sidebar: #0F172A; 
@@ -29,9 +31,9 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
 
-        /* --- PRINT MODE (CTRL+P) --- */
+        /* PRINT MODE */
         @media print {
-            .sidebar, .top-bar button, .menu-toggle, #auth-screen, .toast, .modal-overlay { display: none !important; }
+            .sidebar, .top-bar button, .menu-toggle, #auth-screen, .toast, .modal-overlay, .btn-add { display: none !important; }
             .main { width: 100% !important; height: auto !important; overflow: visible !important; }
             .calendar-scroll { overflow: visible !important; padding: 0 !important; }
             .day-card { border: 1px solid #000 !important; break-inside: avoid; min-height: 100px !important; }
@@ -40,20 +42,29 @@
             .chip { border: 1px solid #ccc !important; background: none !important; color: black !important; }
         }
 
-        /* --- MODAL EDITOR SUPER --- */
+        /* --- MODAL EDITOR (DRAG & DROP + GOOGLE DOCS STYLE) --- */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: center; }
-        .modal-card { background: white; width: 800px; max-width: 95%; height: 90vh; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; }
+        .modal-card { background: white; width: 900px; max-width: 95%; height: 95vh; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; }
         .modal-header { padding: 20px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
         .modal-title { font-size: 18px; font-weight: 800; }
         .modal-body { padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 20px; background: #F1F5F9; }
         
-        .editor-item { background: white; border: 1px solid var(--border-light); border-radius: 12px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-        .editor-header { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        /* Item do Editor */
+        .editor-item { background: white; border: 1px solid var(--border-light); border-radius: 12px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); display: flex; gap: 10px; transition: transform 0.2s, box-shadow 0.2s; }
+        .editor-item.sortable-ghost { opacity: 0.4; background: #E2E8F0; } /* Estilo enquanto arrasta */
+        .editor-item.sortable-drag { background: white; box-shadow: 0 10px 20px rgba(0,0,0,0.1); transform: scale(1.02); }
+
+        /* Drag Handle (Os pontinhos para arrastar) */
+        .drag-handle { width: 24px; display: flex; align-items: center; justify-content: center; cursor: grab; color: #94A3B8; font-size: 20px; }
+        .drag-handle:hover { color: var(--txt-primary); }
+
+        .editor-content-wrapper { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        .editor-header-row { display: flex; gap: 10px; align-items: center; }
         .ed-input { flex: 1; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-weight: 600; font-size: 14px; outline:none; }
-        .ed-select { width: 150px; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 12px; background: #F8FAFC; cursor: pointer; outline:none; }
+        .ed-select { width: 160px; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 12px; background: #F8FAFC; cursor: pointer; outline:none; }
         
-        /* QUILL CUSTOMIZATION */
-        .ql-container { font-family: 'Inter', sans-serif; font-size: 14px; height: 200px; background: white; }
+        /* QUILL FULL CONFIG */
+        .ql-container { font-family: 'Inter', sans-serif; font-size: 14px; height: 250px; background: white; }
         .ql-toolbar { background: #F8FAFC; border-color: #E2E8F0 !important; border-top-left-radius: 6px; border-top-right-radius: 6px; }
         .ql-container.ql-snow { border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; border-color: #E2E8F0 !important; }
         
@@ -144,10 +155,12 @@
                 <div class="modal-title">Detalhes de <span id="editorDateDisplay"></span></div>
                 <i class="ph-bold ph-x" style="cursor:pointer" onclick="closeEditor()"></i>
             </div>
+            
             <div class="modal-body" id="editorList"></div>
+            
             <div class="modal-footer">
                 <button class="btn-add" onclick="addEditorItem()"><i class="ph-bold ph-plus"></i> Adicionar Experiência</button>
-                <button class="btn-save" onclick="saveEditor()"><i class="ph-bold ph-floppy-disk"></i> SALVAR ALTERAÇÕES</button>
+                <button class="btn-save" onclick="saveEditor()"><i class="ph-bold ph-floppy-disk"></i> SALVAR ORDEM & ALTERAÇÕES</button>
             </div>
         </div>
     </div>
@@ -198,9 +211,7 @@
             <div class="nav-buttons">
                 <button class="nav-btn" onclick="goToToday()" title="Ir para Hoje">HOJE</button>
                 <button class="nav-btn" onclick="downloadImage()" title="Baixar Imagem (PNG)"><i class="ph-bold ph-camera"></i></button>
-                
                 <div style="width:1px; background:var(--border-light); margin:0 4px; height:24px;"></div>
-                
                 <button class="nav-btn" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></button>
                 <button class="nav-btn" onclick="changeMonth(0)"><i class="ph-bold ph-house"></i></button>
                 <button class="nav-btn" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></button>
@@ -222,6 +233,7 @@
         let currUser = localStorage.getItem('awake_user');
         let currentEditingDate = null;
         let quillInstances = {}; 
+        let sortableInstance = null; // Para controlar o drag & drop
 
         const FERIADOS = {
             "2026-01-01": {nome: "Confraternização", tipo: "fer"}, "2026-01-25": {nome: "Aniv. SP", tipo: "fer"},
@@ -262,7 +274,7 @@
             try { const r = await fetch('/api/get_events'); dbEvents = await r.json(); render(); } catch(e){}
         }
 
-        // --- EDITOR MANUAL (SUPER RICH TEXT) ---
+        // --- EDITOR SUPER (DRAG AND DROP + QUILL FULL) ---
         function openEditor(dateStr) {
             currentEditingDate = dateStr;
             document.getElementById('editorDateDisplay').innerText = dateStr.split('-').reverse().join('/');
@@ -270,11 +282,29 @@
             list.innerHTML = '';
             quillInstances = {};
 
+            // 1. Pega os itens
             const items = getEventsForDate(dateStr); 
+            
+            // 2. AUTO-SORT: Feriados no topo (Lógica: 'c-fer' e 'c-com' tem prioridade)
+            // Mas o Sortable vai permitir o usuário mudar isso depois
+            items.sort((a, b) => {
+                const score = t => (t === 'c-fer' || t === 'c-com') ? 0 : 1;
+                return score(a.type) - score(b.type);
+            });
+
+            // 3. Renderiza
             items.forEach(ev => {
                 addEditorItem(ev.desc, ev.details, ev.type);
             });
             if(items.length === 0) addEditorItem();
+
+            // 4. Ativa DRAG & DROP
+            if(sortableInstance) sortableInstance.destroy();
+            sortableInstance = new Sortable(list, {
+                animation: 150,
+                handle: '.drag-handle', // Só arrasta se clicar no ícone
+                ghostClass: 'sortable-ghost'
+            });
 
             document.getElementById('dayEditor').style.display = 'flex';
         }
@@ -287,26 +317,29 @@
             const sel = (val) => val === type ? 'selected' : '';
 
             div.innerHTML = `
-                <div class="editor-header">
-                    <input type="text" class="ed-input" value="${desc}" placeholder="Título (Ex: 19h Yoga)">
-                    <select class="ed-select">
-                        <option value="c-esp" ${sel('c-esp')}>★ Especial</option>
-                        <option value="c-sh" ${sel('c-sh')}>♫ SH (Verde)</option>
-                        <option value="c-teca" ${sel('c-teca')}>☸ Teca (Roxo)</option>
-                        <option value="c-off" ${sel('c-off')}>💤 Recesso</option>
-                        <option value="c-fer" ${sel('c-fer')}>🎈 Feriado</option>
-                        <option value="c-com" ${sel('c-com')}>📅 Data</option>
-                    </select>
-                    <div class="btn-del" onclick="this.closest('.editor-item').remove()"><i class="ph-bold ph-trash"></i></div>
+                <div class="drag-handle"><i class="ph-bold ph-dots-six-vertical"></i></div>
+                <div class="editor-content-wrapper">
+                    <div class="editor-header-row">
+                        <input type="text" class="ed-input" value="${desc}" placeholder="Título (Ex: 19h Yoga)">
+                        <select class="ed-select">
+                            <option value="c-esp" ${sel('c-esp')}>★ Especial (Amarelo)</option>
+                            <option value="c-sh" ${sel('c-sh')}>♫ SH (Verde)</option>
+                            <option value="c-teca" ${sel('c-teca')}>☸ Teca (Roxo)</option>
+                            <option value="c-off" ${sel('c-off')}>💤 Recesso (Cinza)</option>
+                            <option value="c-fer" ${sel('c-fer')}>🎈 Feriado (Vermelho)</option>
+                            <option value="c-com" ${sel('c-com')}>📅 Data (Azul)</option>
+                        </select>
+                        <div class="btn-del" onclick="this.closest('.editor-item').remove()"><i class="ph-bold ph-trash"></i></div>
+                    </div>
+                    <div id="${editorId}"></div>
                 </div>
-                <div id="${editorId}" style="background:white;"></div>
             `;
             document.getElementById('editorList').appendChild(div);
 
-            // CONFIGURAÇÃO COMPLETA DO QUILL
+            // QUILL FULL TOOLBAR (GOOGLE DOCS STYLE)
             const quill = new Quill('#'+editorId, {
                 theme: 'snow',
-                placeholder: 'Escreva detalhes, roteiro da aula, check-list...',
+                placeholder: 'Cole aqui seu texto do Docs...',
                 modules: {
                     toolbar: [
                         [{ 'header': [1, 2, 3, false] }],
@@ -314,8 +347,8 @@
                         [{ 'color': [] }, { 'background': [] }],
                         [{ 'align': [] }],
                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                        ['link', 'image'],
-                        ['clean']
+                        [{ 'indent': '-1'}, { 'indent': '+1' }], // Recuo
+                        ['link', 'image', 'clean'] // Links e Imagens
                     ]
                 }
             });
@@ -326,6 +359,7 @@
 
         async function saveEditor() {
             const items = [];
+            // O querySelectorAll pega na ORDEM VISUAL (que o Sortable mudou)
             document.querySelectorAll('.editor-item').forEach(el => {
                 const desc = el.querySelector('input').value.trim();
                 const type = el.querySelector('select').value;
