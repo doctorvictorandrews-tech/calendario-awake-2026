@@ -7,72 +7,92 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     
     <style>
-        /* DESIGN SYSTEM */
-        :root { --bg-app:#F8FAFC; --bg-sidebar:#0F172A; --bg-card:#FFFFFF; --txt-primary:#0F172A; --txt-secondary:#64748B; --border-light:#E2E8F0; --border-dark:#1E293B; --brand:#10B981; }
+        /* --- DESIGN SYSTEM CLEAN --- */
+        :root {
+            --bg-app: #F8FAFC; 
+            --bg-sidebar: #0F172A; 
+            --bg-card: #FFFFFF;
+            --txt-primary: #0F172A; 
+            --txt-secondary: #64748B; 
+            --border-light: #E2E8F0; 
+            --border-dark: #1E293B;
+            --brand: #10B981; 
+        }
+
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
 
-        /* EDITOR MODAL (ATUALIZADO PARA QUILL) */
+        /* --- PRINT MODE (CTRL+P) --- */
+        @media print {
+            .sidebar, .top-bar button, .menu-toggle, #auth-screen, .toast, .modal-overlay { display: none !important; }
+            .main { width: 100% !important; height: auto !important; overflow: visible !important; }
+            .calendar-scroll { overflow: visible !important; padding: 0 !important; }
+            .day-card { border: 1px solid #000 !important; break-inside: avoid; min-height: 100px !important; }
+            body { background: white; color: black; height: auto; overflow: visible; }
+            .grid-header { color: black !important; }
+            .chip { border: 1px solid #ccc !important; background: none !important; color: black !important; }
+        }
+
+        /* --- MODAL EDITOR SUPER --- */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: center; }
-        .modal-card { background: white; width: 700px; max-width: 95%; height: 90vh; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; }
+        .modal-card { background: white; width: 800px; max-width: 95%; height: 90vh; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; }
         .modal-header { padding: 20px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
         .modal-title { font-size: 18px; font-weight: 800; }
-        .modal-body { padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 20px; background: #fff; }
+        .modal-body { padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 20px; background: #F1F5F9; }
         
         .editor-item { background: white; border: 1px solid var(--border-light); border-radius: 12px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-        .editor-header { display: flex; gap: 10px; margin-bottom: 10px; }
+        .editor-header { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
         .ed-input { flex: 1; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-weight: 600; font-size: 14px; outline:none; }
-        .ed-select { width: 140px; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 12px; background: #F8FAFC; cursor: pointer; outline:none; }
+        .ed-select { width: 150px; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 12px; background: #F8FAFC; cursor: pointer; outline:none; }
         
-        /* QUILL OVERRIDES */
-        .ql-container { font-family: 'Inter', sans-serif; font-size: 14px; height: 150px; }
-        .ql-toolbar { border-top-left-radius: 6px; border-top-right-radius: 6px; background: #F8FAFC; border-color: #E2E8F0 !important; }
+        /* QUILL CUSTOMIZATION */
+        .ql-container { font-family: 'Inter', sans-serif; font-size: 14px; height: 200px; background: white; }
+        .ql-toolbar { background: #F8FAFC; border-color: #E2E8F0 !important; border-top-left-radius: 6px; border-top-right-radius: 6px; }
         .ql-container.ql-snow { border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; border-color: #E2E8F0 !important; }
         
-        .btn-del { color: #EF4444; background: #FEF2F2; border: 1px solid #FCA5A5; width: 38px; height: 38px; border-radius: 6px; cursor: pointer; display: grid; place-items: center; transition:0.2s; }
+        .btn-del { color: #EF4444; background: #FEF2F2; border: 1px solid #FCA5A5; width: 40px; height: 40px; border-radius: 8px; cursor: pointer; display: grid; place-items: center; transition:0.2s; }
         .btn-del:hover { background: #EF4444; color: white; }
         
-        .modal-footer { padding: 20px; border-top: 1px solid var(--border-light); display: flex; justify-content: space-between; background: #F8FAFC; }
-        .btn-save { background: var(--brand); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 700; cursor: pointer; transition:0.2s; font-size: 14px; }
+        .modal-footer { padding: 20px; border-top: 1px solid var(--border-light); display: flex; justify-content: space-between; background: white; }
+        .btn-save { background: var(--brand); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 700; cursor: pointer; transition:0.2s; font-size: 14px; display:flex; align-items:center; gap:8px; }
         .btn-save:hover { filter: brightness(1.1); transform: translateY(-1px); }
-        .btn-add { background: white; border: 1px solid var(--border-light); color: var(--txt-primary); padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition:0.2s; }
+        .btn-add { background: white; border: 1px solid var(--border-light); color: var(--txt-primary); padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition:0.2s; display:flex; align-items:center; gap:8px; }
         .btn-add:hover { background: #F1F5F9; }
 
-        /* RESTO (MANTIDO) */
-        #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-app); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        .login-box { background: #fff; padding: 40px; border-radius: 20px; border: 1px solid var(--border-light); box-shadow: 0 20px 40px rgba(0,0,0,0.1); width: 350px; text-align: center; }
-        .login-input { width: 100%; padding: 14px; margin: 20px 0; border: 1px solid var(--border-light); border-radius: 8px; font-size: 16px; outline:none; }
-        .login-btn { width: 100%; padding: 14px; background: var(--brand); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
-        
+        /* LAYOUT & COMPONENTS */
         .sidebar { width: 400px; background: var(--bg-sidebar); color: #F8FAFC; display: flex; flex-direction: column; border-right: 1px solid var(--border-dark); z-index: 50; transition: 0.3s; }
         .brand-section { padding: 20px; border-bottom: 1px solid var(--border-dark); background: rgba(0,0,0,0.2); }
+        .user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        .avatar { width: 32px; height: 32px; background: var(--brand); border-radius: 8px; display: grid; place-items: center; font-weight: 700; color: white; }
         .tabs { display: flex; gap: 5px; background: #1E293B; padding: 4px; border-radius: 8px; }
         .tab { flex: 1; text-align: center; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 6px; color: #94A3B8; }
         .tab.active { background: #334155; color: white; }
+        
         .chat-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
         .bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; max-width: 90%; white-space: pre-wrap; }
         .bubble-ai { background: #1E293B; color: #E2E8F0; }
         .bubble-user { align-self: flex-end; background: var(--brand); color: #064E3B; font-weight: 600; margin-left: auto; }
         .input-area { padding: 20px; background: var(--bg-sidebar); border-top: 1px solid var(--border-dark); }
-        .chat-input { width: 100%; background: #1E293B; border: 1px solid #334155; color: white; padding: 14px; border-radius: 12px; outline: none; resize: none; height: 50px; }
-        .send-btn { background: var(--brand); border: none; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; color: #022c22; display: grid; place-items: center; }
-        
-        .logs-list { flex: 1; overflow-y: auto; padding: 0; }
-        .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; }
-        .undo-btn { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; }
+        .input-container { background: #1E293B; border-radius: 12px; border: 1px solid #334155; display: flex; align-items: flex-end; min-height: 50px; }
+        .chat-input { width: 100%; background: transparent; border: none; color: white; padding: 14px; font-size: 14px; outline: none; resize: none; height: 50px; max-height: 120px; font-family: 'Inter', sans-serif; }
+        .send-btn { background: var(--brand); border: none; width: 32px; height: 32px; border-radius: 6px; margin: 0 8px 8px 0; cursor: pointer; color: #022c22; display: grid; place-items: center; flex-shrink: 0; }
 
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
         .top-bar { padding: 20px 30px; background: #fff; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
+        .nav-buttons { display: flex; gap: 6px; align-items: center; }
         .nav-btn { width: 36px; height: 36px; border: 1px solid var(--border-light); background: #F8FAFC; border-radius: 6px; cursor: pointer; color: var(--txt-secondary); display: grid; place-items: center; transition:0.2s; }
         .nav-btn:hover { background: #E2E8F0; color: var(--txt-primary); }
+        
         .calendar-scroll { flex: 1; overflow-y: auto; padding: 20px; }
         .grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 10px; }
-        .weekday { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-secondary); }
+        .weekday { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-secondary); text-transform: uppercase; }
         .grid-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding-bottom: 40px; }
         
         .day-card { background: #fff; border: 1px solid var(--border-light); border-radius: 12px; min-height: 140px; padding: 12px; display: flex; flex-direction: column; position: relative; cursor: pointer; transition: 0.2s; }
@@ -82,7 +102,7 @@
         .is-today .day-num { color: var(--brand); }
 
         .chip { font-size: 11px; padding: 6px 8px; border-radius: 6px; font-weight: 600; margin-bottom: 4px; border-left: 3px solid transparent; position: relative; }
-        .has-details::after { content: '📝'; position: absolute; right: 5px; top: 50%; transform: translateY(-50%); font-size: 10px; opacity: 0.7; }
+        .has-details::after { content: '📝'; position: absolute; right: 5px; top: 50%; transform: translateY(-50%); font-size: 12px; opacity: 1; }
         
         .c-sh { background: #ECFDF5; color: #065F46; border-color: #34D399; }
         .c-teca { background: #F5F3FF; color: #5B21B6; border-color: #A78BFA; }
@@ -90,6 +110,18 @@
         .c-fer { background: #FEF2F2; color: #991B1B; border-color: #FCA5A5; }
         .c-com { background: #eff6ff; color: #1e3a8a; border-color: #93c5fd; }
         .c-off { background: #F1F5F9; color: #64748B; border-color: #CBD5E1; text-decoration: line-through; }
+
+        /* Login & Logs */
+        #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-app); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        .login-box { background: #fff; padding: 40px; border-radius: 20px; border: 1px solid var(--border-light); box-shadow: 0 20px 40px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        .login-input { width: 100%; padding: 14px; margin: 20px 0; border: 1px solid var(--border-light); border-radius: 8px; font-size: 16px; outline:none; }
+        .login-btn { width: 100%; padding: 14px; background: var(--brand); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        
+        .logs-list { flex: 1; overflow-y: auto; padding: 0; }
+        .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; }
+        .undo-btn { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; }
+        .view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        #historyView { display: none; }
 
         .menu-toggle { display: none; font-size: 24px; cursor: pointer; margin-right: 15px; }
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
@@ -114,8 +146,8 @@
             </div>
             <div class="modal-body" id="editorList"></div>
             <div class="modal-footer">
-                <button class="btn-add" onclick="addEditorItem()"><i class="ph-bold ph-plus"></i> Nova Experiência</button>
-                <button class="btn-save" onclick="saveEditor()"><i class="ph-bold ph-check"></i> SALVAR ALTERAÇÕES</button>
+                <button class="btn-add" onclick="addEditorItem()"><i class="ph-bold ph-plus"></i> Adicionar Experiência</button>
+                <button class="btn-save" onclick="saveEditor()"><i class="ph-bold ph-floppy-disk"></i> SALVAR ALTERAÇÕES</button>
             </div>
         </div>
     </div>
@@ -144,7 +176,7 @@
             </div>
         </div>
         <div id="chatView" class="view">
-            <div class="chat-scroll" id="chatHistory"><div class="msg-group"><div class="bubble bubble-ai">Olá! Pronta para atualizar o calendário.</div></div></div>
+            <div class="chat-scroll" id="chatHistory"><div class="msg-group"><div class="bubble bubble-ai">Olá! Estou pronta para ajudar na gestão.</div></div></div>
             <div class="input-area">
                 <div class="input-container">
                     <textarea id="userInput" class="chat-input" placeholder="Digite..." rows="1"></textarea>
@@ -164,8 +196,11 @@
                 </div>
             </div>
             <div class="nav-buttons">
-                <button class="nav-btn" onclick="downloadImage()" title="Baixar Imagem"><i class="ph-bold ph-camera"></i></button>
-                <div style="width:1px; background:var(--border-light); margin:0 4px;"></div>
+                <button class="nav-btn" onclick="goToToday()" title="Ir para Hoje">HOJE</button>
+                <button class="nav-btn" onclick="downloadImage()" title="Baixar Imagem (PNG)"><i class="ph-bold ph-camera"></i></button>
+                
+                <div style="width:1px; background:var(--border-light); margin:0 4px; height:24px;"></div>
+                
                 <button class="nav-btn" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></button>
                 <button class="nav-btn" onclick="changeMonth(0)"><i class="ph-bold ph-house"></i></button>
                 <button class="nav-btn" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></button>
@@ -186,7 +221,7 @@
         let chatContext = [];
         let currUser = localStorage.getItem('awake_user');
         let currentEditingDate = null;
-        let quillInstances = {}; // Guarda as instâncias dos editores
+        let quillInstances = {}; 
 
         const FERIADOS = {
             "2026-01-01": {nome: "Confraternização", tipo: "fer"}, "2026-01-25": {nome: "Aniv. SP", tipo: "fer"},
@@ -227,13 +262,13 @@
             try { const r = await fetch('/api/get_events'); dbEvents = await r.json(); render(); } catch(e){}
         }
 
-        // --- EDITOR MANUAL (RICH TEXT) ---
+        // --- EDITOR MANUAL (SUPER RICH TEXT) ---
         function openEditor(dateStr) {
             currentEditingDate = dateStr;
             document.getElementById('editorDateDisplay').innerText = dateStr.split('-').reverse().join('/');
             const list = document.getElementById('editorList');
             list.innerHTML = '';
-            quillInstances = {}; // Reset
+            quillInstances = {};
 
             const items = getEventsForDate(dateStr); 
             items.forEach(ev => {
@@ -248,7 +283,6 @@
             const div = document.createElement('div');
             div.className = 'editor-item';
             
-            // Gera ID único para o editor
             const editorId = 'quill-' + Date.now() + Math.random().toString(36).substr(2, 9);
             const sel = (val) => val === type ? 'selected' : '';
 
@@ -256,62 +290,51 @@
                 <div class="editor-header">
                     <input type="text" class="ed-input" value="${desc}" placeholder="Título (Ex: 19h Yoga)">
                     <select class="ed-select">
-                        <option value="c-esp" ${sel('c-esp')}>★ Especial (Amarelo)</option>
+                        <option value="c-esp" ${sel('c-esp')}>★ Especial</option>
                         <option value="c-sh" ${sel('c-sh')}>♫ SH (Verde)</option>
                         <option value="c-teca" ${sel('c-teca')}>☸ Teca (Roxo)</option>
-                        <option value="c-off" ${sel('c-off')}>💤 Recesso (Cinza)</option>
-                        <option value="c-fer" ${sel('c-fer')}>🎈 Feriado (Vermelho)</option>
-                        <option value="c-com" ${sel('c-com')}>📅 Data (Azul)</option>
+                        <option value="c-off" ${sel('c-off')}>💤 Recesso</option>
+                        <option value="c-fer" ${sel('c-fer')}>🎈 Feriado</option>
+                        <option value="c-com" ${sel('c-com')}>📅 Data</option>
                     </select>
                     <div class="btn-del" onclick="this.closest('.editor-item').remove()"><i class="ph-bold ph-trash"></i></div>
                 </div>
-                <div id="${editorId}"></div>
+                <div id="${editorId}" style="background:white;"></div>
             `;
             document.getElementById('editorList').appendChild(div);
 
-            // Inicializa Quill
+            // CONFIGURAÇÃO COMPLETA DO QUILL
             const quill = new Quill('#'+editorId, {
                 theme: 'snow',
+                placeholder: 'Escreva detalhes, roteiro da aula, check-list...',
                 modules: {
                     toolbar: [
-                        ['bold', 'italic', 'underline'],
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'align': [] }],
                         [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['link', 'image'],
                         ['clean']
                     ]
                 }
             });
             
-            // Carrega conteúdo existente (Se for HTML)
-            if(details) {
-                quill.root.innerHTML = details; 
-            } else {
-                quill.setText(''); // Garante vazio
-            }
-            
-            // Salva referência
+            if(details) quill.root.innerHTML = details; 
             quillInstances[editorId] = quill;
         }
 
         async function saveEditor() {
             const items = [];
-            
-            // Itera sobre os cards do DOM
-            const editorItems = document.querySelectorAll('.editor-item');
-            
-            editorItems.forEach(el => {
+            document.querySelectorAll('.editor-item').forEach(el => {
                 const desc = el.querySelector('input').value.trim();
                 const type = el.querySelector('select').value;
-                
-                // Pega o ID do editor Quill dentro deste card
                 const editorContainer = el.querySelector('div[id^="quill-"]');
                 let detailsHTML = "";
                 
                 if (editorContainer && quillInstances[editorContainer.id]) {
                     const q = quillInstances[editorContainer.id];
-                    // Pega o HTML, mas se for só vazio/espaço, salva vazio
-                    if (q.getLength() > 1) {
-                        detailsHTML = q.root.innerHTML;
-                    }
+                    if (q.getLength() > 1) detailsHTML = q.root.innerHTML;
                 }
 
                 if(desc) items.push({ desc: desc, details: detailsHTML, type: type });
@@ -327,6 +350,7 @@
         }
         function closeEditor() { document.getElementById('dayEditor').style.display = 'none'; }
 
+        // --- TOOLS ---
         function downloadImage() {
             const node = document.querySelector('.main');
             html2canvas(node, { scale: 2, backgroundColor: "#F8FAFC" }).then(canvas => {
@@ -336,8 +360,13 @@
                 link.click();
             });
         }
+        
+        function goToToday() {
+            currMonth = new Date().getMonth() + 1;
+            render();
+        }
 
-        // --- CORE LOGIC (SAFE DATE FIX) ---
+        // --- CORE LOGIC ---
         function getEventsForDate(ds) {
             const p = ds.split('-'); 
             const dt = new Date(p[0], p[1]-1, p[2], 12, 0, 0); 
@@ -395,8 +424,7 @@
                 const events = getEventsForDate(ds);
                 let html = "";
                 events.forEach(ev => {
-                    // Check for real HTML content
-                    const hasDet = ev.details && ev.details.length > 20 ? 'has-details' : ''; // >20 to ignore empty <p><br></p>
+                    const hasDet = ev.details && ev.details.length > 20 ? 'has-details' : '';
                     const cls = ev.type || getChipClass(ev.desc);
                     html += `<div class="chip ${cls} ${hasDet}">${ev.desc}</div>`;
                 });
