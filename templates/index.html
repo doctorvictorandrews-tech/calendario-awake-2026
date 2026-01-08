@@ -9,82 +9,80 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
-        /* DESIGN SYSTEM */
+        /* --- DESIGN SYSTEM (LIGHT MODE ONLY) --- */
         :root {
-            --bg-app: #F8FAFC; --bg-sidebar: #0F172A; --bg-card: #FFFFFF;
-            --txt-primary: #0F172A; --txt-secondary: #64748B; --txt-inverse: #F8FAFC;
-            --border-light: #E2E8F0; --border-dark: #1E293B;
-            --brand: #10B981; --brand-glow: rgba(16, 185, 129, 0.3);
+            --bg-app: #F8FAFC; 
+            --bg-sidebar: #0F172A; /* Sidebar continua escura para contraste profissional */
+            --bg-card: #FFFFFF;
+            --txt-primary: #0F172A; 
+            --txt-secondary: #64748B; 
+            --txt-inverse: #F8FAFC;
+            --border-light: #E2E8F0; 
+            --border-dark: #1E293B;
+            --brand: #10B981; 
+            --brand-glow: rgba(16, 185, 129, 0.3);
             --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        }
-        @media (prefers-color-scheme: dark) {
-            :root { --bg-app: #0B1120; --bg-card: #1E293B; --txt-primary: #F1F5F9; --txt-secondary: #94A3B8; --border-light: #334155; }
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
 
-        /* LOGIN SCREEN (SIMPLES) */
-        #auth-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg-app); z-index: 9999;
-            display: flex; justify-content: center; align-items: center; flex-direction: column;
-        }
+        /* LOGIN SCREEN */
+        #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-app); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
         .login-box { background: var(--bg-card); padding: 40px; border-radius: 20px; width: 350px; text-align: center; border: 1px solid var(--border-light); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-        .login-input { width: 100%; padding: 14px; margin: 20px 0; border: 1px solid var(--border-light); border-radius: 8px; font-size: 16px; background: var(--bg-app); color: var(--txt-primary); outline: none; }
+        .login-input { width: 100%; padding: 14px; margin: 20px 0; border: 1px solid var(--border-light); border-radius: 8px; font-size: 16px; background: var(--bg-app); outline: none; }
         .login-btn { width: 100%; padding: 14px; background: var(--brand); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
         .login-btn:hover { filter: brightness(1.1); }
 
-        /* SIDEBAR & TABS */
+        /* LAYOUT */
         .sidebar { width: 400px; background-color: var(--bg-sidebar); color: var(--txt-inverse); display: flex; flex-direction: column; border-right: 1px solid var(--border-dark); z-index: 50; transition: transform 0.3s ease; }
-        
         .brand-section { padding: 20px; border-bottom: 1px solid var(--border-dark); background: rgba(0,0,0,0.2); }
         .user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
         .avatar { width: 32px; height: 32px; background: var(--brand); border-radius: 8px; display: grid; place-items: center; font-weight: 700; color: white; }
-        
         .tabs { display: flex; gap: 5px; background: #1E293B; padding: 4px; border-radius: 8px; }
         .tab { flex: 1; text-align: center; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 6px; color: #94A3B8; transition: 0.2s; }
         .tab.active { background: #334155; color: white; }
 
-        /* VIEWS */
         .view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         #historyView { display: none; }
 
-        /* Chat */
+        /* CHAT */
         .chat-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
         .bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; max-width: 90%; white-space: pre-wrap; }
         .bubble-ai { background: #1E293B; color: #E2E8F0; border: 1px solid #334155; }
         .bubble-user { align-self: flex-end; background: var(--brand); color: #064E3B; font-weight: 600; margin-left: auto; }
-        
         .input-area { padding: 20px; background: var(--bg-sidebar); border-top: 1px solid var(--border-dark); }
         .input-container { background: #1E293B; border-radius: 12px; border: 1px solid #334155; display: flex; align-items: flex-end; min-height: 50px; }
         .chat-input { width: 100%; background: transparent; border: none; color: white; padding: 14px; font-size: 14px; outline: none; resize: none; overflow-y: hidden; height: 50px; max-height: 120px; font-family: 'Inter', sans-serif; }
         .send-btn { background: var(--brand); border: none; width: 32px; height: 32px; border-radius: 6px; margin: 0 8px 8px 0; cursor: pointer; color: #022c22; display: grid; place-items: center; flex-shrink: 0; }
 
-        /* History Logs */
+        /* LOGS */
         .logs-list { flex: 1; overflow-y: auto; padding: 0; }
         .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; align-items: flex-start; }
-        .log-meta { flex: 1; }
-        .log-user { font-size: 13px; font-weight: 700; color: white; }
-        .log-desc { font-size: 12px; color: #94A3B8; margin-top: 2px; }
         .undo-btn { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; }
 
-        /* Main Calendar */
+        /* CALENDAR */
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
         .top-bar { padding: 20px 30px; background: var(--bg-card); border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
-        .nav-buttons { display: flex; gap: 4px; }
         .nav-btn { width: 36px; height: 36px; border: 1px solid var(--border-light); background: var(--bg-app); border-radius: 6px; cursor: pointer; color: var(--txt-secondary); display: grid; place-items: center; }
-
         .calendar-scroll { flex: 1; overflow-y: auto; padding: 20px; }
         .grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 10px; }
         .weekday { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-secondary); text-transform: uppercase; }
         .grid-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding-bottom: 40px; }
-
+        
         .day-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; min-height: 140px; padding: 12px; display: flex; flex-direction: column; position: relative; }
         .day-num { font-size: 18px; font-weight: 700; color: var(--txt-primary); margin-bottom: 8px; }
         .is-today { border: 2px solid var(--brand); }
         .is-today .day-num { color: var(--brand); }
-        .chip { font-size: 11px; padding: 6px 8px; border-radius: 6px; font-weight: 600; margin-bottom: 4px; border-left: 3px solid transparent; background: #F1F5F9; color: #334155; }
+        
+        /* CHIPS (Cores fixas Light Mode) */
+        .chip { font-size: 11px; padding: 6px 8px; border-radius: 6px; font-weight: 600; margin-bottom: 4px; border-left: 3px solid transparent; }
+        .c-sh { background: #ECFDF5; color: #065F46; border-color: #34D399; }
+        .c-teca { background: #F5F3FF; color: #5B21B6; border-color: #A78BFA; }
+        .c-esp { background: #FFFBEB; color: #92400E; border-color: #FCD34D; }
+        .c-fer { background: #FEF2F2; color: #991B1B; border-color: #FCA5A5; } /* Feriado Vermelho */
+        .c-com { background: #eff6ff; color: #1e3a8a; border-color: #93c5fd; } /* Data Comemorativa Azul */
+        .c-off { background: #F1F5F9; color: #64748B; border-color: #CBD5E1; text-decoration: line-through; }
 
         /* Mobile */
         .menu-toggle { display: none; font-size: 24px; cursor: pointer; color: var(--txt-primary); margin-right: 15px; }
@@ -97,21 +95,6 @@
             .grid-header { display: none; } 
             .grid-body { grid-template-columns: 1fr; }
         }
-        
-        /* Dark Mode Colors Chips */
-        @media (prefers-color-scheme: dark) {
-            .chip { background: #334155; color: #E2E8F0; }
-            .c-sh { background: #064E3B; color: #A7F3D0; border-color: #10B981; }
-            .c-off { background: #1E293B; opacity: 0.5; }
-        }
-        @media (prefers-color-scheme: light) {
-            .c-sh { background: #ECFDF5; color: #065F46; border-color: #34D399; }
-            .c-teca { background: #F5F3FF; color: #5B21B6; border-color: #A78BFA; }
-            .c-esp { background: #FFFBEB; color: #92400E; border-color: #FCD34D; }
-            .c-fer { background: #FEF2F2; color: #991B1B; border-color: #FCA5A5; }
-            .c-off { background: #F1F5F9; color: #64748B; border-color: #CBD5E1; text-decoration: line-through; }
-        }
-
         .toast { position: fixed; top: 20px; right: 20px; background: var(--bg-card); padding: 15px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-left: 4px solid var(--brand); z-index: 100; color: var(--txt-primary); display:none; }
     </style>
 </head>
@@ -120,10 +103,10 @@
     <div id="auth-screen">
         <div class="login-box">
             <div style="font-size:40px; color:var(--brand); margin-bottom:10px;"><i class="ph-bold ph-calendar-check"></i></div>
-            <h2 style="margin:0; color:var(--txt-primary);">Identificação</h2>
-            <p style="color:var(--txt-secondary); font-size:14px;">Quem está acessando?</p>
-            <input type="text" id="nameInput" class="login-input" placeholder="Seu Nome (Ex: Teca)">
-            <button class="login-btn" onclick="doLogin()">ACESSAR SISTEMA</button>
+            <h2 style="margin:0; color:var(--txt-primary);">Awake OS</h2>
+            <p style="color:var(--txt-secondary); font-size:14px;">Identifique-se</p>
+            <input type="text" id="nameInput" class="login-input" placeholder="Seu Nome">
+            <button class="login-btn" onclick="doLogin()">ENTRAR</button>
         </div>
     </div>
 
@@ -133,8 +116,8 @@
     <div class="sidebar" id="sidebar">
         <div class="brand-section">
             <div class="user-info">
-                <div class="avatar" id="avatar">?</div>
-                <div style="font-weight:700; font-size:14px;"><span id="userNameDisplay">Visitante</span></div>
+                <div class="avatar" id="avatar"></div>
+                <div style="font-weight:700; font-size:14px;"><span id="userNameDisplay"></span></div>
             </div>
             <div class="tabs">
                 <div class="tab active" onclick="switchTab('chat')">CHAT IA</div>
@@ -143,15 +126,12 @@
         </div>
 
         <div id="chatView" class="view">
-            <div class="chat-scroll" id="chatHistory">
-                <div class="msg-group"><div class="bubble bubble-ai">Olá! Pode falar, estou ouvindo.</div></div>
-            </div>
+            <div class="chat-scroll" id="chatHistory"><div class="msg-group"><div class="bubble bubble-ai">Olá! Estou pronta.</div></div></div>
             <div class="input-area">
                 <div class="input-container">
                     <textarea id="userInput" class="chat-input" placeholder="Digite..." rows="1"></textarea>
                     <button class="send-btn" onclick="sendMessage()"><i class="ph-bold ph-paper-plane-right"></i></button>
                 </div>
-                <div style="font-size:10px; color:#475569; margin-top:10px; text-align:center;">Shift+Enter pula linha</div>
             </div>
         </div>
 
@@ -165,7 +145,7 @@
             <div style="display:flex; align-items:center;">
                 <i class="ph-bold ph-list menu-toggle" onclick="toggleMenu()"></i>
                 <div style="font-weight:800; font-size:20px; color:var(--txt-primary);">
-                    <span id="monthTitle">JAN</span> <span style="font-size:0.6em; opacity:0.6;">2026</span>
+                    <span id="monthTitle"></span> <span style="font-size:0.6em; opacity:0.6;">2026</span>
                 </div>
             </div>
             <div class="nav-buttons">
@@ -189,9 +169,30 @@
         let chatContext = [];
         let currUser = localStorage.getItem('awake_user');
 
-        const FERIADOS = { "2026-01-01": "Confraternização", "2026-01-25": "Aniv. SP", "2026-02-17": "Carnaval", "2026-04-03": "Sexta Santa", "2026-04-21": "Tiradentes", "2026-05-01": "Trabalhador", "2026-06-04": "Corpus Christi", "2026-07-09": "Rev. 32", "2026-09-07": "Independência", "2026-10-12": "N. Sra. Aparecida", "2026-11-02": "Finados", "2026-11-15": "Proclamação", "2026-11-20": "Consciência", "2026-12-25": "Natal" };
+        // CALENDÁRIO COMPLETO 2026 (SP + BR + COMEMORATIVAS)
+        const FERIADOS = {
+            "2026-01-01": {nome: "Confraternização", tipo: "fer"},
+            "2026-01-25": {nome: "Aniv. SP", tipo: "fer"},
+            "2026-02-17": {nome: "Carnaval", tipo: "fer"},
+            "2026-03-08": {nome: "Dia da Mulher", tipo: "com"},
+            "2026-04-03": {nome: "Sexta Santa", tipo: "fer"},
+            "2026-04-05": {nome: "Páscoa", tipo: "com"},
+            "2026-04-21": {nome: "Tiradentes", tipo: "fer"},
+            "2026-05-01": {nome: "Dia do Trabalho", tipo: "fer"},
+            "2026-05-10": {nome: "Dia das Mães", tipo: "com"},
+            "2026-06-04": {nome: "Corpus Christi", tipo: "fer"},
+            "2026-06-12": {nome: "Dia dos Namorados", tipo: "com"},
+            "2026-07-09": {nome: "Rev. Const. (SP)", tipo: "fer"},
+            "2026-08-09": {nome: "Dia dos Pais", tipo: "com"},
+            "2026-09-07": {nome: "Independência", tipo: "fer"},
+            "2026-10-12": {nome: "N. Sra. Aparecida", tipo: "fer"},
+            "2026-11-02": {nome: "Finados", tipo: "fer"},
+            "2026-11-15": {nome: "Proclamação", tipo: "fer"},
+            "2026-11-20": {nome: "Consciência Negra", tipo: "fer"},
+            "2026-12-25": {nome: "Natal", tipo: "fer"}
+        };
 
-        // AUTH
+        // --- AUTH ---
         if(currUser) { document.getElementById('auth-screen').style.display='none'; setupUser(); }
         function doLogin() {
             const n = document.getElementById('nameInput').value.trim();
@@ -208,7 +209,7 @@
         }
         function logout() { localStorage.removeItem('awake_user'); window.location.reload(); }
 
-        // CORE
+        // --- CORE ---
         async function init() {
             const ta = document.getElementById('userInput');
             ta.addEventListener('input', function(){ this.style.height='auto'; this.style.height=(this.scrollHeight)+'px'; if(!this.value) this.style.height='50px'; });
@@ -224,15 +225,6 @@
             } catch(e){}
         }
 
-        // TABS & LOGS
-        function switchTab(t) {
-            document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById('chatView').style.display = t==='chat'?'flex':'none';
-            document.getElementById('historyView').style.display = t==='history'?'flex':'none';
-            if(t==='history') loadLogs();
-        }
-
         async function loadLogs() {
             const l = document.getElementById('logsList');
             l.innerHTML = '<div style="padding:20px;text-align:center;color:#666">Carregando...</div>';
@@ -242,7 +234,7 @@
                 l.innerHTML = '';
                 d.forEach(log => {
                     const date = new Date(log.created_at).toLocaleString('pt-BR');
-                    l.innerHTML += `<div class="log-item"><div class="log-meta"><div class="log-user">${log.user_name}</div><div class="log-desc">${log.action_summary}</div><div style="font-size:10px;opacity:0.5">${date}</div></div><button onclick="undo(${log.id})" class="undo-btn">DESFAZER</button></div>`;
+                    l.innerHTML += `<div class="log-item"><div class="log-meta"><div class="log-user" style="color:#0F172A">${log.user_name}</div><div class="log-desc">${log.action_summary}</div><div style="font-size:10px;opacity:0.5">${date}</div></div><button onclick="undo(${log.id})" class="undo-btn">DESFAZER</button></div>`;
                 });
             } catch(e){ l.innerHTML = 'Erro ao carregar logs'; }
         }
@@ -250,10 +242,20 @@
         async function undo(id) {
             if(!confirm("Desfazer essa ação?")) return;
             await fetch('/api/undo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({log_id:id}) });
-            loadLogs(); loadEvents(); showToast("Ação desfeita!");
+            await loadEvents(); // Importante: Recarregar eventos para ver a mudança
+            await loadLogs(); 
+            showToast("Ação desfeita!");
         }
 
-        // CHAT
+        function switchTab(t) {
+            document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('chatView').style.display = t==='chat'?'flex':'none';
+            document.getElementById('historyView').style.display = t==='history'?'flex':'none';
+            if(t==='history') loadLogs();
+        }
+
+        // --- CHAT & RENDER ---
         async function sendMessage() {
             const inp = document.getElementById('userInput');
             const txt = inp.value.trim();
@@ -310,22 +312,55 @@
                 let isT = (is2026 && d===today.getDate() && currMonth===(today.getMonth()+1));
                 
                 let h = "";
-                let ex = dbEvents.find(e=>e.data===ds);
-                if(ex) {
-                    if(ex.tipo==='recesso') h+=`<div class="chip c-off">💤 ${ex.descricao}</div>`;
-                    else if(ex.tipo==='cancelado') h+=``;
-                    else h+=`<div class="chip c-esp">★ ${ex.descricao}</div>`;
-                } else if(FERIADOS[ds]) {
-                    h+=`<div class="chip c-fer">🎈 ${FERIADOS[ds]}</div>`;
-                } else {
-                    if(wd===2 && ![1,7].includes(currMonth)) h+=`<div class="chip c-teca">Talk Med.</div>`;
-                    let sh="";
-                    if(wd===1) sh="19h SH (Haran)"; if(wd===2) sh="19h SH (Karina)";
-                    if(wd===3) sh="19h SH (Pat)"; if(wd===4) sh="19h SH (Pat)";
-                    if(wd===5) sh="10h SH (Haran)";
-                    if(sh) h+=`<div class="chip c-sh">${sh}</div>`;
-                    if(wd===6) h+=`<div class="chip c-sh">10h SH (Karina)</div><div class="chip c-sh">15h SH (Karina)</div>`;
+
+                // 1. CAMADA FERIADOS/DATAS (SEMPRE MOSTRA)
+                if(FERIADOS[ds]) {
+                    const f = FERIADOS[ds];
+                    const cls = f.tipo === 'fer' ? 'c-fer' : 'c-com';
+                    const icon = f.tipo === 'fer' ? '🎈' : '📅';
+                    h += `<div class="chip ${cls}">${icon} ${f.nome}</div>`;
                 }
+
+                // 2. CAMADA EVENTOS
+                let ex = dbEvents.find(e=>e.data===ds);
+                
+                // Se existe exceção
+                if(ex) {
+                    if(ex.tipo==='cancelado') {
+                        // Se foi cancelado, NÃO mostra agenda padrão.
+                        // Mas o feriado (adicionado no passo 1) continua lá.
+                        // h += nada
+                    } else if(ex.tipo==='recesso') {
+                        h+=`<div class="chip c-off">💤 ${ex.descricao}</div>`;
+                    } else {
+                        // Evento Especial (IA)
+                        h+=`<div class="chip c-esp">★ ${ex.descricao}</div>`;
+                    }
+                } 
+                // Se NÃO existe exceção (Agenda Padrão)
+                else {
+                    // REGRA TECA (Terças)
+                    if(wd===2 && ![1,7].includes(currMonth)) {
+                        h+=`<div class="chip c-teca">08h15 Talk Med. (Teca)</div>`;
+                    }
+                    
+                    // AGENDA BASE (SH)
+                    let sh="";
+                    if(wd===1) sh="19h SH (Haran)"; 
+                    if(wd===2) sh="19h SH (Karina)";
+                    if(wd===3) sh="19h SH (Pat)"; 
+                    if(wd===4) sh="19h SH (Pat)";
+                    if(wd===5) sh="10h SH (Haran)";
+                    
+                    if(sh) h+=`<div class="chip c-sh">${sh}</div>`;
+                    
+                    // Sábado Duplo
+                    if(wd===6) {
+                        h+=`<div class="chip c-sh">10h SH (Karina)</div>`;
+                        h+=`<div class="chip c-sh">15h SH (Karina)</div>`;
+                    }
+                }
+                
                 g.innerHTML += `<div class="day-card ${isT?'is-today':''}"><div class="day-num">${d}</div>${h}</div>`;
             }
         }
