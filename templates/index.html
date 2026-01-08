@@ -3,403 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Awake Calendar</title>
+    <title>Awake OS | Enterprise</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
-        /* --- DESIGN SYSTEM: CLEAN & CRISP --- */
+        /* --- CORE DESIGN TOKENS --- */
         :root {
-            /* Cores de Fundo e Superfície */
-            --bg-body: #F9FAFB;       /* Cinza muito suave (Fundo Geral) */
-            --bg-sidebar: #111827;    /* Azul-Preto Profundo (Sidebar) */
-            --bg-card: #FFFFFF;       /* Branco Puro (Cards) */
+            /* Cores Estruturais */
+            --bg-app: #F8FAFC;       /* Slate 50 */
+            --bg-sidebar: #0F172A;   /* Slate 900 (Dark Blueish) */
+            --bg-card: #FFFFFF;
             
-            /* Bordas e Linhas */
-            --border-light: #E5E7EB;  /* Cinza claro para linhas */
-            --border-dark: #1F2937;   /* Borda da sidebar */
+            /* Bordas */
+            --border-light: #E2E8F0;
+            --border-dark: #1E293B;
             
             /* Texto */
-            --text-primary: #111827;  /* Quase preto (Leitura perfeita) */
-            --text-secondary: #6B7280; /* Cinza médio */
-            --text-inverse: #FFFFFF;  /* Texto na sidebar */
+            --txt-primary: #0F172A;
+            --txt-secondary: #64748B;
+            --txt-inverse: #F8FAFC;
             
-            /* Marca */
-            --brand-green: #059669;   /* Verde Profissional */
-            --brand-accent: #D97706;  /* Âmbar */
+            /* Marca e Acentos */
+            --brand: #10B981;        /* Emerald 500 */
+            --brand-glow: rgba(16, 185, 129, 0.3);
+            --purple: #8B5CF6;
+            --amber: #F59E0B;
+            --rose: #F43F5E;
             
-            /* Cores de Eventos (Pastel High-Contrast) */
-            --evt-sh-bg: #ECFDF5; --evt-sh-txt: #065F46; --evt-sh-bor: #34D399;
-            --evt-teca-bg: #F5F3FF; --evt-teca-txt: #5B21B6; --evt-teca-bor: #A78BFA;
-            --evt-esp-bg: #FFFBEB; --evt-esp-txt: #92400E; --evt-esp-bor: #FCD34D;
-            --evt-fer-bg: #FEF2F2; --evt-fer-txt: #991B1B; --evt-fer-bor: #FCA5A5;
-            --evt-off-bg: #F3F4F6; --evt-off-txt: #4B5563; --evt-off-bor: #D1D5DB;
+            /* Sombras Profissionais (Smooth Shadows) */
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-float: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body {
-            background-color: var(--bg-body);
-            color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-app);
+            color: var(--txt-primary);
+            font-family: 'Plus Jakarta Sans', sans-serif; /* Fonte moderna geométrica */
             height: 100vh;
             display: flex;
             overflow: hidden;
+            font-feature-settings: "ss01", "ss02", "cv01"; /* Font features para ficar pro */
         }
 
-        /* --- SIDEBAR (MODERNA E ESCURA) --- */
+        /* --- SIDEBAR (CONSOLE) --- */
         .sidebar {
-            width: 360px;
+            width: 400px;
             background-color: var(--bg-sidebar);
-            color: var(--text-inverse);
+            color: var(--txt-inverse);
             display: flex;
             flex-direction: column;
             border-right: 1px solid var(--border-dark);
-            z-index: 20;
-            box-shadow: 4px 0 24px rgba(0,0,0,0.05);
-        }
-
-        .brand-area {
-            padding: 32px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .logo {
-            font-family: 'Manrope', sans-serif;
-            font-weight: 800;
-            font-size: 22px;
-            letter-spacing: -0.5px;
-            display: flex; align-items: center; gap: 12px;
-            color: white;
-        }
-        .logo i { color: var(--brand-green); }
-
-        /* Chat Area */
-        .chat-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-            overflow: hidden;
-        }
-
-        .chat-history {
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            padding-bottom: 20px;
-        }
-
-        /* Balões de Chat */
-        .msg {
-            max-width: 90%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 14px;
-            line-height: 1.5;
-            animation: fadeIn 0.3s ease;
-        }
-        .msg-ai {
-            background: rgba(255,255,255,0.1);
-            color: #E5E7EB;
-            border-bottom-left-radius: 2px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        .msg-user {
-            align-self: flex-end;
-            background: var(--brand-green);
-            color: white;
-            border-bottom-right-radius: 2px;
-            font-weight: 500;
-        }
-        .ai-label { font-size: 10px; text-transform: uppercase; color: #6B7280; margin-bottom: 4px; font-weight: 700; letter-spacing: 1px; }
-
-        /* Input Area */
-        .input-box {
-            padding: 20px;
-            background: #0F131D;
-            border-top: 1px solid rgba(255,255,255,0.1);
-        }
-        .input-wrapper { position: relative; }
-        
-        .cmd-input {
-            width: 100%;
-            background: #1F2937;
-            border: 1px solid #374151;
-            color: white;
-            padding: 14px 45px 14px 16px;
-            border-radius: 10px;
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            outline: none;
-            transition: 0.2s;
-        }
-        .cmd-input:focus { border-color: var(--brand-green); box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.2); }
-        .cmd-input::placeholder { color: #6B7280; }
-
-        .send-icon {
-            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-            color: var(--brand-green); cursor: pointer; font-size: 18px;
-            transition: 0.2s;
-        }
-        .send-icon:hover { color: white; }
-
-        /* --- MAIN CALENDAR (CLEAN & BRIGHT) --- */
-        .main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background-color: var(--bg-body);
-            overflow: hidden;
-        }
-
-        /* Header Navigation */
-        .header {
-            background: var(--bg-card);
-            padding: 24px 40px;
-            border-bottom: 1px solid var(--border-light);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-
-        .month-title {
-            font-family: 'Manrope', sans-serif;
-            font-size: 32px;
-            font-weight: 800;
-            color: var(--text-primary);
-            letter-spacing: -1px;
-        }
-        .year-label {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--text-secondary);
-            font-size: 14px;
-            margin-left: 8px;
-            background: #F3F4F6;
-            padding: 4px 8px;
-            border-radius: 6px;
-        }
-
-        .nav-actions { display: flex; gap: 12px; }
-        .btn-nav {
-            width: 40px; height: 40px;
-            background: white; border: 1px solid var(--border-light);
-            border-radius: 8px;
-            color: var(--text-primary);
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 18px;
-            transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-        .btn-nav:hover { background: #F9FAFB; border-color: #D1D5DB; transform: translateY(-1px); }
-
-        /* Grid System */
-        .calendar-wrapper {
-            flex: 1;
-            padding: 30px 40px;
-            overflow-y: auto;
-        }
-
-        .grid-header {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-        .weekday {
-            text-align: center;
-            color: var(--text-secondary);
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .grid-body {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 16px;
-            /* Garante que os cards tenham altura mínima boa */
-            auto-rows: minmax(160px, 1fr); 
-        }
-
-        /* --- DAY CARD (THE STAR) --- */
-        .day-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border-light);
-            border-radius: 12px;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            z-index: 50;
             position: relative;
         }
 
+        .brand-section {
+            padding: 32px;
+            border-bottom: 1px solid var(--border-dark);
+            background: linear-gradient(180deg, rgba(15,23,42,1) 0%, rgba(15,23,42,0) 100%);
+        }
+        
+        .logo {
+            font-size: 20px; font-weight: 800; letter-spacing: -0.5px;
+            display: flex; align-items: center; gap: 12px;
+            color: white;
+        }
+        .logo-icon {
+            width: 32px; height: 32px; background: var(--brand);
+            border-radius: 8px; display: grid; place-items: center; color: white;
+            box-shadow: 0 0 20px var(--brand-glow);
+        }
+
+        /* Chat Container */
+        .chat-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            scroll-behavior: smooth;
+        }
+        
+        /* Mensagens */
+        .msg-group { animation: slideIn 0.3s ease-out; display: flex; flex-direction: column; gap: 6px; }
+        .msg-role { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; color: #475569; margin-left: 4px; }
+        
+        .bubble {
+            padding: 14px 18px; border-radius: 16px; font-size: 14px; line-height: 1.6;
+            max-width: 90%; box-shadow: var(--shadow-sm); position: relative;
+        }
+        
+        .bubble-ai {
+            background: #1E293B; color: #E2E8F0; border-top-left-radius: 2px;
+            border: 1px solid #334155;
+        }
+        
+        .bubble-user {
+            align-self: flex-end; background: var(--brand); color: #064E3B;
+            border-top-right-radius: 2px; font-weight: 600;
+            margin-left: auto;
+        }
+
+        /* Input Area (Floating) */
+        .input-area {
+            padding: 24px;
+            background: var(--bg-sidebar);
+            border-top: 1px solid var(--border-dark);
+        }
+        
+        .input-container {
+            position: relative;
+            background: #1E293B;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            transition: all 0.2s;
+            display: flex; align-items: center;
+        }
+        .input-container:focus-within {
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+            transform: translateY(-1px);
+        }
+        
+        .chat-input {
+            width: 100%; background: transparent; border: none;
+            color: white; padding: 16px; font-size: 14px; outline: none;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .send-btn {
+            background: var(--brand); border: none;
+            width: 36px; height: 36px; border-radius: 8px;
+            margin-right: 8px; cursor: pointer; color: #022c22;
+            display: grid; place-items: center; transition: 0.2s;
+        }
+        .send-btn:hover { filter: brightness(1.1); transform: scale(1.05); }
+
+        /* --- MAIN AREA (CALENDAR) --- */
+        .main {
+            flex: 1; display: flex; flex-direction: column;
+            overflow: hidden; position: relative;
+        }
+
+        /* Header */
+        .top-bar {
+            padding: 24px 40px;
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-light);
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 40;
+        }
+        
+        .date-display h1 { font-size: 28px; font-weight: 800; color: var(--txt-primary); letter-spacing: -1px; margin: 0; }
+        .date-display span { font-family: 'JetBrains Mono'; color: var(--txt-secondary); font-size: 14px; background: #F1F5F9; padding: 4px 8px; border-radius: 6px; margin-left: 10px; }
+
+        .nav-buttons {
+            display: flex; gap: 8px; background: white; padding: 4px; border-radius: 10px; border: 1px solid var(--border-light);
+        }
+        .nav-btn {
+            width: 36px; height: 36px; border: none; background: transparent; border-radius: 6px;
+            cursor: pointer; color: var(--txt-secondary); display: grid; place-items: center; transition: 0.2s;
+        }
+        .nav-btn:hover { background: #F1F5F9; color: var(--txt-primary); }
+
+        /* Calendar Grid */
+        .calendar-scroll { flex: 1; overflow-y: auto; padding: 40px; }
+        
+        .grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 16px; margin-bottom: 16px; }
+        .weekday { text-align: center; font-size: 12px; font-weight: 700; color: #94A3B8; letter-spacing: 1px; text-transform: uppercase; }
+
+        .grid-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 16px; padding-bottom: 40px; }
+
+        /* DAY CARD (PRO) */
+        .day-card {
+            background: white;
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            min-height: 160px;
+            padding: 16px;
+            display: flex; flex-direction: column;
+            transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+        }
+        
         .day-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 12px 24px rgba(0,0,0,0.06);
-            border-color: #D1D5DB;
+            box-shadow: var(--shadow-lg);
+            border-color: #CBD5E1;
             z-index: 10;
         }
 
-        .day-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .day-number {
-            font-family: 'Manrope', sans-serif;
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
+        .day-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .day-num { font-size: 20px; font-weight: 700; color: var(--txt-primary); }
+        
         /* Estados do Dia */
-        .is-today {
-            border: 2px solid var(--brand-green);
-            background-color: #F0FDF4; /* Verde muito claro */
-        }
-        .is-today .day-number { color: var(--brand-green); }
+        .is-today { border: 2px solid var(--brand); background: #F0FDFA; }
+        .is-today .day-num { color: var(--brand); }
+        .today-pill { background: var(--brand); color: white; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
         
-        .today-badge {
-            background: var(--brand-green);
-            color: white;
-            font-size: 10px;
-            font-weight: 700;
-            padding: 3px 8px;
-            border-radius: 100px;
-            text-transform: uppercase;
-        }
+        .is-past { background: #F8FAFC; opacity: 0.8; }
+        .is-past .day-num { color: #CBD5E1; }
+        .is-other { opacity: 0; pointer-events: none; }
 
-        .is-past {
-            background-color: #F9FAFB;
-            opacity: 0.8; 
-        }
-        .is-past .day-number { color: #9CA3AF; }
-        
-        .other-month {
-            opacity: 0.3;
-            background: none;
-            border-style: dashed;
-            pointer-events: none;
-        }
-
-        /* Chips de Eventos (Pills) */
-        .event-list { display: flex; flex-direction: column; gap: 6px; }
+        /* Chips (Eventos) */
+        .events-stack { display: flex; flex-direction: column; gap: 6px; }
         
         .chip {
-            font-size: 11px;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-weight: 600;
-            line-height: 1.35;
-            border-left: 3px solid transparent;
-            display: flex; align-items: center; gap: 6px;
+            font-size: 11px; padding: 8px 10px; border-radius: 8px; font-weight: 600;
+            display: flex; align-items: center; gap: 6px; line-height: 1.3;
+            transition: 0.2s; border-left: 3px solid transparent;
         }
+        .chip:hover { transform: translateX(2px); filter: brightness(0.95); }
 
-        /* Variantes de Chips (Cores Claras e Legíveis) */
-        .c-sh { background: var(--evt-sh-bg); color: var(--evt-sh-txt); border-color: var(--evt-sh-bor); }
-        .c-teca { background: var(--evt-teca-bg); color: var(--evt-teca-txt); border-color: var(--evt-teca-bor); }
-        .c-special { background: var(--evt-esp-bg); color: var(--evt-esp-txt); border-color: var(--evt-esp-bor); }
-        .c-feriado { background: var(--evt-fer-bg); color: var(--evt-fer-txt); border-color: var(--evt-fer-bor); }
-        .c-off { background: var(--evt-off-bg); color: var(--evt-off-txt); border-color: var(--evt-off-bor); text-decoration: line-through; opacity: 0.7; }
+        /* Variantes de Chips */
+        .c-sh { background: #ECFDF5; color: #065F46; border-color: #34D399; } /* Verde */
+        .c-teca { background: #F5F3FF; color: #5B21B6; border-color: #A78BFA; } /* Roxo */
+        .c-esp { background: #FFFBEB; color: #92400E; border-color: #FCD34D; } /* Âmbar */
+        .c-fer { background: #FEF2F2; color: #991B1B; border-color: #FCA5A5; } /* Vermelho */
+        .c-off { background: #F1F5F9; color: #64748B; border-color: #CBD5E1; text-decoration: line-through; opacity: 0.8; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        .loading-dots::after { content: ' .'; animation: dots 1s steps(5, end) infinite; }
+        /* SKELETON LOADING (O Segredo do App Rápido) */
+        .skeleton { background: #E2E8F0; border-radius: 6px; animation: pulse 1.5s infinite ease-in-out; }
+        .sk-card { height: 160px; border-radius: 16px; }
+        @keyframes pulse { 0% { opacity: 0.6; } 50% { opacity: 1; } 100% { opacity: 0.6; } }
+
+        /* TOAST NOTIFICATION */
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: white; border: 1px solid var(--border-light); border-left: 4px solid var(--brand);
+            padding: 16px 20px; border-radius: 8px; box-shadow: var(--shadow-float);
+            display: flex; align-items: center; gap: 12px;
+            animation: slideInRight 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            min-width: 300px;
+        }
+        .toast h4 { margin: 0; font-size: 14px; color: var(--txt-primary); }
+        .toast p { margin: 0; font-size: 12px; color: var(--txt-secondary); margin-top: 2px; }
+        
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(50px); } to { opacity: 1; transform: translateX(0); } }
+        
+        .typing-dots::after { content: ' .'; animation: dots 1s steps(5, end) infinite; }
         @keyframes dots { 0%, 20% { color: rgba(0,0,0,0); } 40% { color: white; } 100% { color: white; } }
 
     </style>
 </head>
 <body>
 
+    <div class="toast-container" id="toastContainer"></div>
+
     <div class="sidebar">
-        <div class="brand-area">
+        <div class="brand-section">
             <div class="logo">
-                <i class="ph-fill ph-circles-three-plus"></i> AWAKE OS
+                <div class="logo-icon"><i class="ph-bold ph-calendar-check"></i></div>
+                Awake OS
             </div>
         </div>
 
-        <div class="chat-container">
-            <div class="chat-history" id="chatHistory">
-                <div class="msg msg-ai">
-                    <div class="ai-label">Assistente</div>
-                    Olá! O calendário de 2026 está carregado. Pode me pedir qualquer alteração.
+        <div class="chat-scroll" id="chatHistory">
+            <div class="msg-group">
+                <div class="msg-role">Assistente</div>
+                <div class="bubble bubble-ai">
+                    Olá! O motor Groq Llama 3 está ativo e pronto. Pode falar naturalmente.
                 </div>
             </div>
         </div>
 
-        <div class="input-box">
-            <div class="input-wrapper">
-                <input type="text" id="userInput" class="cmd-input" placeholder="Ex: Dia 20 Workshop..." onkeypress="if(event.key==='Enter') sendMessage()">
-                <i class="ph-bold ph-paper-plane-right send-icon" onclick="sendMessage()"></i>
+        <div class="input-area">
+            <div class="input-container">
+                <input type="text" id="userInput" class="chat-input" placeholder="Digite uma instrução..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <button class="send-btn" onclick="sendMessage()"><i class="ph-bold ph-paper-plane-right"></i></button>
+            </div>
+            <div style="font-size:11px; color:#475569; margin-top:10px; text-align:center;">
+                Pressione Enter para enviar. IA conectada em tempo real.
             </div>
         </div>
     </div>
 
     <div class="main">
-        <div class="header">
-            <div>
-                <span class="month-title" id="monthTitle">JANEIRO</span>
-                <span class="year-label">2026</span>
+        <div class="top-bar">
+            <div class="date-display">
+                <h1><span id="monthTitle">JANEIRO</span> <span>2026</span></h1>
             </div>
-            <div class="nav-actions">
-                <button class="btn-nav" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></button>
-                <button class="btn-nav" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></button>
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></button>
+                <button class="nav-btn" onclick="changeMonth(0)"><i class="ph-bold ph-house"></i></button>
+                <button class="nav-btn" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></button>
             </div>
         </div>
 
-        <div class="calendar-wrapper">
+        <div class="calendar-scroll">
             <div class="grid-header">
-                <div class="weekday">DOM</div>
-                <div class="weekday">SEG</div>
-                <div class="weekday">TER</div>
-                <div class="weekday">QUA</div>
-                <div class="weekday">QUI</div>
-                <div class="weekday">SEX</div>
-                <div class="weekday">SÁB</div>
+                <div class="weekday">DOM</div><div class="weekday">SEG</div><div class="weekday">TER</div>
+                <div class="weekday">QUA</div><div class="weekday">QUI</div><div class="weekday">SEX</div><div class="weekday">SÁB</div>
             </div>
-            <div class="grid-body" id="calendarGrid">
-                </div>
+            
+            <div class="grid-body" id="grid">
+                <div class="skeleton sk-card"></div><div class="skeleton sk-card"></div><div class="skeleton sk-card"></div>
+                <div class="skeleton sk-card"></div><div class="skeleton sk-card"></div><div class="skeleton sk-card"></div>
+                <div class="skeleton sk-card"></div>
+            </div>
         </div>
     </div>
 
     <script>
         const MONTHS = ["", "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
         let currMonth = new Date().getMonth() + 1;
-        // Força início em Janeiro se não estiver em 2026
         if(new Date().getFullYear() !== 2026) currMonth = 1;
-        
         let dbEvents = [];
 
-        // Feriados 2026
         const FERIADOS = {
-            "2026-01-01": "Confraternização Universal",
-            "2026-01-25": "Aniversário de SP",
-            "2026-02-17": "Carnaval",
-            "2026-04-03": "Sexta-feira Santa",
-            "2026-04-21": "Tiradentes",
-            "2026-05-01": "Dia do Trabalhador",
-            "2026-06-04": "Corpus Christi",
-            "2026-07-09": "Rev. Constitucionalista",
-            "2026-09-07": "Independência",
-            "2026-10-12": "N. Sra. Aparecida",
-            "2026-11-02": "Finados",
-            "2026-11-15": "Proclamação",
-            "2026-11-20": "Consciência Negra",
-            "2026-12-25": "Natal"
+            "2026-01-01": "Confraternização", "2026-01-25": "Aniv. SP", "2026-02-17": "Carnaval",
+            "2026-04-03": "Sexta Santa", "2026-04-21": "Tiradentes", "2026-05-01": "Trabalhador",
+            "2026-06-04": "Corpus Christi", "2026-07-09": "Rev. 32", "2026-09-07": "Independência",
+            "2026-10-12": "N. Sra. Aparecida", "2026-11-02": "Finados", "2026-11-15": "Proclamação",
+            "2026-11-20": "Consciência", "2026-12-25": "Natal"
         };
 
         async function init() {
             await loadEvents();
-            render();
         }
 
         async function loadEvents() {
@@ -407,136 +336,139 @@
                 const res = await fetch('/api/get_events');
                 dbEvents = await res.json();
                 render();
-            } catch(e) { console.error("Erro dados", e); }
+            } catch(e) { console.error(e); }
         }
 
+        // CHAT LOGIC
         async function sendMessage() {
             const input = document.getElementById('userInput');
             const text = input.value.trim();
             if(!text) return;
 
-            addMsg(text, 'user');
+            addBubble(text, 'user');
             input.value = "";
-            const loadingId = addMsg("Pensando<span class='loading-dots'></span>", 'ai', true);
+            const loadingId = addBubble("Pensando<span class='typing-dots'></span>", 'ai', true);
 
             try {
                 const res = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ text: text, month: currMonth })
                 });
                 const data = await res.json();
                 document.getElementById(loadingId).remove();
                 
                 if(data.ok) {
-                    addMsg(data.reply, 'ai');
-                    if(data.actions_count > 0) await loadEvents();
+                    addBubble(data.reply, 'ai');
+                    if(data.actions_count > 0) {
+                        showToast("Sucesso", `${data.actions_count} alteração(ões) aplicada(s).`);
+                        await loadEvents();
+                    }
                 } else {
-                    addMsg("Tive um problema técnico: " + data.reply, 'ai');
+                    addBubble("Erro: " + data.reply, 'ai');
                 }
             } catch(e) {
                 document.getElementById(loadingId).remove();
-                addMsg("Erro de conexão.", 'ai');
+                addBubble("Erro de conexão.", 'ai');
             }
         }
 
-        function addMsg(html, type, returnId=false) {
+        function addBubble(html, type, returnId=false) {
             const box = document.getElementById('chatHistory');
-            const div = document.createElement('div');
+            const group = document.createElement('div');
+            group.className = 'msg-group';
+            
+            const role = document.createElement('div');
+            role.className = 'msg-role';
+            role.innerText = type === 'ai' ? 'Awake AI' : 'Você';
+            
+            const bubble = document.createElement('div');
             const id = 'msg-' + Date.now();
-            div.id = id;
-            div.className = `msg msg-${type}`;
-            div.innerHTML = type === 'ai' ? `<div class="ai-label">Assistente</div>${html}` : html;
-            box.appendChild(div);
+            bubble.id = id;
+            bubble.className = `bubble bubble-${type}`;
+            bubble.innerHTML = html;
+            
+            if(type === 'ai') group.appendChild(role);
+            group.appendChild(bubble);
+            box.appendChild(group);
+            
             box.scrollTop = box.scrollHeight;
             if(returnId) return id;
         }
 
+        function showToast(title, msg) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `
+                <i class="ph-fill ph-check-circle" style="color:var(--brand); font-size:24px;"></i>
+                <div><h4>${title}</h4><p>${msg}</p></div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-20px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // RENDER LOGIC
         function render() {
-            const grid = document.getElementById('calendarGrid');
+            const grid = document.getElementById('grid');
             document.getElementById('monthTitle').innerText = MONTHS[currMonth];
             grid.innerHTML = "";
 
             const firstDay = new Date(2026, currMonth - 1, 1).getDay();
             const daysInMonth = new Date(2026, currMonth, 0).getDate();
             const today = new Date();
-            const isYear2026 = today.getFullYear() === 2026;
+            const is2026 = today.getFullYear() === 2026;
 
-            // Empty slots
-            for (let i = 0; i < firstDay; i++) {
-                grid.innerHTML += `<div class="day-card other-month"></div>`;
-            }
+            for (let i = 0; i < firstDay; i++) grid.innerHTML += `<div class="day-card is-other"></div>`;
 
-            // Days
             for (let d = 1; d <= daysInMonth; d++) {
                 const dateObj = new Date(2026, currMonth - 1, d);
                 const dateStr = dateObj.toISOString().split('T')[0];
-                const wd = dateObj.getDay(); // 0=Dom ... 6=Sab
-
-                let isToday = (isYear2026 && d === today.getDate() && currMonth === (today.getMonth()+1));
+                const wd = dateObj.getDay();
+                let isToday = (is2026 && d === today.getDate() && currMonth === (today.getMonth()+1));
                 let isPast = dateObj < today;
 
-                // Build HTML
-                let contentHTML = "";
-
-                // 1. Exceção do Banco
-                const exc = dbEvents.find(e => e.data === dateStr);
+                let html = "";
+                let exc = dbEvents.find(e => e.data === dateStr);
                 
-                if (exc) {
-                    if (exc.tipo === 'recesso') {
-                        contentHTML += `<div class="chip c-off">💤 ${exc.descricao}</div>`;
-                    } else if (exc.tipo === 'cancelado') {
-                        contentHTML += `<div class="chip c-off">Cancelado</div>`;
-                    } else {
-                        // Especial
-                        contentHTML += `<div class="chip c-special">★ ${exc.descricao}</div>`;
-                    }
-                } 
-                // 2. Feriado
-                else if (FERIADOS[dateStr]) {
-                    contentHTML += `<div class="chip c-feriado">🎈 ${FERIADOS[dateStr]}</div>`;
-                }
-                // 3. Padrão
-                else {
-                    // Regra Teca
-                    if (wd === 1 && ![1, 7].includes(currMonth)) {
-                        contentHTML += `<div class="chip c-teca">08h15 Talk Med.</div>`;
-                    }
-                    
-                    // Regra Sound Healing
+                if(exc) {
+                    if(exc.tipo === 'recesso') html += `<div class="chip c-off">💤 ${exc.descricao}</div>`;
+                    else if(exc.tipo === 'cancelado') html += `<div class="chip c-off">Cancelado</div>`;
+                    else html += `<div class="chip c-esp">★ ${exc.descricao}</div>`;
+                } else if(FERIADOS[dateStr]) {
+                    html += `<div class="chip c-fer">🎈 ${FERIADOS[dateStr]}</div>`;
+                } else {
+                    if(wd===1 && ![1,7].includes(currMonth)) html += `<div class="chip c-teca">Talk Med.</div>`;
                     let sh = "";
-                    if (wd === 0) sh = "19h SH (Haran)";
-                    if (wd === 1) sh = "19h SH (Karina)";
-                    if (wd === 2) sh = "19h SH (Pat)";
-                    if (wd === 3) sh = "19h SH (Pat)";
-                    if (wd === 4) sh = "19h SH (Haran)";
-                    if (wd === 5) sh = "10h SH (Karina)";
-                    
-                    if (sh) contentHTML += `<div class="chip c-sh">${sh}</div>`;
+                    if(wd===0) sh="19h SH (Haran)";
+                    if(wd===1) sh="19h SH (Karina)";
+                    if(wd===2) sh="19h SH (Pat)";
+                    if(wd===3) sh="19h SH (Pat)";
+                    if(wd===4) sh="19h SH (Haran)";
+                    if(wd===5) sh="10h SH (Karina)";
+                    if(sh) html += `<div class="chip c-sh">${sh}</div>`;
                 }
 
-                // Classes
-                const todayClass = isToday ? 'is-today' : '';
-                const pastClass = (isPast && !isToday) ? 'is-past' : '';
-                const badge = isToday ? '<span class="today-badge">HOJE</span>' : '';
+                let badge = isToday ? '<span class="today-pill">HOJE</span>' : '';
+                let cls = `day-card ${isToday ? 'is-today' : ''} ${isPast && !isToday ? 'is-past' : ''}`;
 
                 grid.innerHTML += `
-                <div class="day-card ${todayClass} ${pastClass}">
-                    <div class="day-header">
-                        <div class="day-number">${d}</div>
-                        ${badge}
-                    </div>
-                    <div class="event-list">
-                        ${contentHTML}
-                    </div>
+                <div class="${cls}">
+                    <div class="day-header"><div class="day-num">${d}</div>${badge}</div>
+                    <div class="events-stack">${html}</div>
                 </div>`;
             }
         }
 
         function changeMonth(delta) {
-            currMonth += delta;
-            if (currMonth > 12) currMonth = 1;
-            if (currMonth < 1) currMonth = 12;
+            if(delta === 0) currMonth = new Date().getMonth() + 1; // Reset to today
+            else currMonth += delta;
+            
+            if(currMonth > 12) currMonth = 1;
+            if(currMonth < 1) currMonth = 12;
             render();
         }
 
