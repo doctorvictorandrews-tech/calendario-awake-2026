@@ -13,85 +13,75 @@
     <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     
     <style>
-        :root { --bg-app:#F1F5F9; --bg-sidebar:#0F172A; --bg-card:#FFFFFF; --txt-primary:#1E293B; --txt-secondary:#64748B; --border:#E2E8F0; --brand:#10B981; }
+        :root { --bg-app:#F3F4F6; --bg-sidebar:#0F172A; --bg-card:#FFFFFF; --txt-primary:#111827; --txt-secondary:#6B7280; --border:#E5E7EB; --brand:#10B981; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
-        @media print { .sidebar, .top-bar button, .menu-toggle, #auth-screen, .toast, .modal-overlay { display: none !important; } .main { width: 100% !important; overflow: visible !important; } .calendar-scroll { padding:0; overflow:visible; } body{background:white;} }
+        @media print { .sidebar, .top-bar button, #auth-screen, .toast, .modal-overlay { display: none !important; } .main { width: 100% !important; overflow: visible !important; } .calendar-scroll { padding:0; overflow:visible; } .day-card { border:1px solid #000!important; break-inside:avoid; } body{background:white;} }
 
         /* UI COMPONENTS */
-        .btn { padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: white; color: var(--txt-secondary); transition:0.2s; display:flex; align-items:center; gap:6px; font-size:13px; }
-        .btn:hover { background: #F8FAFC; color: var(--txt-primary); border-color: #CBD5E1; }
-        .btn-primary { background: var(--brand); color: white; border: none; }
-        .btn-primary:hover { filter: brightness(1.1); }
+        .btn { padding: 8px 14px; border-radius: 8px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: white; color: var(--txt-primary); transition:0.2s; display:flex; align-items:center; gap:6px; font-size:13px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+        .btn:hover { background: #F9FAFB; border-color: #D1D5DB; }
+        .btn-primary { background: var(--brand); color: white; border: none; box-shadow: 0 2px 4px rgba(16,185,129,0.2); }
         
-        /* MODAL EDITOR */
-        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: center; }
-        .modal-card { background: white; width: 800px; max-width: 95%; height: 90vh; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); overflow: hidden; display: flex; flex-direction: column; }
+        /* MODAL */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(17, 24, 39, 0.6); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: center; }
+        .modal-card { background: white; width: 850px; max-width: 95%; height: 90vh; border-radius: 16px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); overflow: hidden; display: flex; flex-direction: column; }
         .modal-header { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: white; }
-        .modal-body { padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px; background: #F8FAFC; }
+        .modal-body { padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 16px; background: #F9FAFB; }
         
         .editor-item { background: white; border: 1px solid var(--border); border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; gap: 12px; transition: 0.2s; }
-        .drag-handle { width: 24px; display: flex; align-items: center; justify-content: center; cursor: grab; color: #CBD5E1; }
-        .drag-handle:hover { color: var(--txt-primary); }
+        .drag-handle { width: 24px; display: flex; align-items: center; justify-content: center; cursor: grab; color: #9CA3AF; }
+        .ed-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .ed-input { padding: 9px 12px; border: 1px solid var(--border); border-radius: 6px; font-family: 'Inter'; font-size: 13px; outline:none; }
+        .ed-time { width: 90px; } .ed-title { flex: 2; font-weight: 600; } .ed-inst { flex: 1; }
+        .ed-select { padding: 9px; border: 1px solid var(--border); border-radius: 6px; background: #F9FAFB; font-size: 13px; cursor: pointer; outline:none; font-weight:600; }
         
-        .editor-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
-        .ed-input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-family: 'Inter'; font-size: 13px; outline:none; }
-        .ed-time { width: 80px; }
-        .ed-title { flex: 2; font-weight: 600; }
-        .ed-inst { flex: 1; }
-        .ed-select { padding: 8px; border: 1px solid var(--border); border-radius: 6px; background: #F8FAFC; font-size: 13px; cursor: pointer; outline:none; font-weight:600; }
-        
-        .ql-container { font-family: 'Inter', sans-serif; font-size: 13px; height: 150px; background: white; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; }
-        .ql-toolbar { background: #F1F5F9; border-top-left-radius: 6px; border-top-right-radius: 6px; border-color: var(--border)!important; }
+        .ql-container { font-family: 'Inter', sans-serif; font-size: 14px; height: 150px; background: white; border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; border: 1px solid var(--border); border-top: none; }
+        .ql-toolbar { background: #F3F4F6; border-top-left-radius: 6px; border-top-right-radius: 6px; border: 1px solid var(--border); }
         
         /* CALENDAR */
-        .sidebar { width: 320px; background: var(--bg-sidebar); color: #F8FAFC; display: flex; flex-direction: column; border-right: 1px solid #334155; z-index: 50; }
-        .brand-section { padding: 24px; border-bottom: 1px solid #1E293B; }
-        .app-title { font-weight: 800; font-size: 18px; letter-spacing: -0.5px; margin-bottom: 16px; display:flex; gap:10px; align-items:center; }
-        
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         .top-bar { padding: 16px 32px; background: white; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-        .month-title { font-size: 24px; font-weight: 800; letter-spacing: -1px; color: var(--txt-primary); }
-        .month-year { font-size: 24px; font-weight: 400; color: var(--txt-secondary); margin-left: 8px; }
+        .calendar-scroll { flex: 1; overflow-y: auto; padding: 24px; }
+        .grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; margin-bottom: 12px; }
+        .weekday { text-align: center; font-size: 11px; font-weight: 700; color: #9CA3AF; text-transform: uppercase; letter-spacing: 1px; }
+        .grid-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; padding-bottom: 40px; }
         
-        .calendar-scroll { flex: 1; overflow-y: auto; padding: 32px; }
-        .grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 16px; margin-bottom: 16px; }
-        .weekday { text-align: center; font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; }
-        .grid-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 16px; padding-bottom: 40px; }
-        
-        .day-card { background: white; border: 1px solid var(--border); border-radius: 12px; min-height: 150px; padding: 12px; display: flex; flex-direction: column; cursor: pointer; transition: 0.2s; position: relative; }
-        .day-card:hover { border-color: #94A3B8; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); transform: translateY(-2px); z-index: 10; }
+        .day-card { background: white; border: 1px solid var(--border); border-radius: 12px; min-height: 140px; padding: 10px; display: flex; flex-direction: column; cursor: pointer; transition: 0.2s; position: relative; }
+        .day-card:hover { border-color: var(--brand); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transform: translateY(-2px); z-index: 10; }
         .day-num { font-size: 16px; font-weight: 700; color: var(--txt-secondary); margin-bottom: 8px; }
-        .is-today { border: 2px solid var(--brand); background: #F0FDFA; } .is-today .day-num { color: var(--brand); }
+        .is-today { border: 2px solid var(--brand); background: #ECFDF5; } .is-today .day-num { color: var(--brand); }
 
-        /* CHIPS */
-        .chip { font-size: 11px; padding: 6px 10px; border-radius: 6px; margin-bottom: 4px; border-left: 3px solid transparent; display: flex; gap: 6px; align-items: center; line-height: 1.3; }
+        .chip { font-size: 11px; padding: 5px 8px; border-radius: 6px; margin-bottom: 4px; border-left: 3px solid transparent; display: flex; gap: 6px; align-items: center; line-height: 1.3; }
         .chip-time { font-weight: 800; opacity: 0.8; min-width: 35px; }
         .chip-title { font-weight: 600; flex: 1; }
-        .chip-inst { font-style: italic; opacity: 0.7; }
+        .chip-inst { font-style: italic; opacity: 0.7; font-size: 10px; }
+        .has-details::after { content: '📝'; margin-left: 4px; font-size: 10px; }
         
-        .c-sh { background: #ECFDF5; color: #065F46; border-color: #34D399; }
-        .c-teca { background: #F5F3FF; color: #5B21B6; border-color: #A78BFA; }
-        .c-esp { background: #FFFBEB; color: #92400E; border-color: #FCD34D; }
-        .c-fer { background: #FEF2F2; color: #991B1B; border-color: #FCA5A5; justify-content: center; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        .c-com { background: #eff6ff; color: #1e3a8a; border-color: #93c5fd; justify-content: center; font-weight: 700; }
-        .c-off { background: #F1F5F9; color: #64748B; border-color: #CBD5E1; text-decoration: line-through; opacity: 0.7; }
+        .c-sh { background: #ECFDF5; color: #047857; border-color: #10B981; }
+        .c-teca { background: #F5F3FF; color: #5B21B6; border-color: #8B5CF6; }
+        .c-esp { background: #FFFBEB; color: #B45309; border-color: #F59E0B; }
+        .c-fer { background: #FEF2F2; color: #B91C1C; border-color: #EF4444; justify-content: center; font-weight: 700; text-transform: uppercase; }
+        .c-com { background: #EFF6FF; color: #1D4ED8; border-color: #3B82F6; justify-content: center; font-weight: 700; }
+        .c-off { background: #F3F4F6; color: #6B7280; border-color: #D1D5DB; text-decoration: line-through; opacity: 0.8; }
 
-        /* Login & Chat */
+        /* SIDEBAR & AUTH */
+        .sidebar { width: 300px; background: var(--bg-sidebar); color: #F8FAFC; display: flex; flex-direction: column; border-right: 1px solid #1E293B; z-index: 50; }
+        .brand-section { padding: 24px; border-bottom: 1px solid #1E293B; }
+        .chat-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+        .bubble { padding: 12px 16px; border-radius: 12px; font-size: 13px; max-width: 90%; white-space: pre-wrap; line-height: 1.5; }
+        .bubble-ai { background: #1E293B; color: #E2E8F0; border: 1px solid #334155; }
+        .bubble-user { align-self: flex-end; background: var(--brand); color: white; font-weight: 500; }
+        .input-area { padding: 20px; border-top: 1px solid #1E293B; background: #0B1120; }
+        .chat-input { width: 100%; background: #1E293B; border: 1px solid #334155; color: white; padding: 12px; border-radius: 8px; outline: none; resize: none; height: 45px; font-size:13px; }
+        .tabs { display: flex; gap: 4px; background: #0B1120; padding: 4px; border-radius: 8px; margin-top: 10px; border: 1px solid #1E293B; }
+        .tab { flex: 1; text-align: center; padding: 8px; font-size: 11px; font-weight: 700; cursor: pointer; border-radius: 6px; color: #94A3B8; }
+        .tab.active { background: #1E293B; color: white; }
         #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-app); z-index: 9999; display: flex; justify-content: center; align-items: center; }
         .login-box { background: white; padding: 40px; border-radius: 16px; width: 350px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
         .login-input { width: 100%; padding: 12px; margin: 20px 0; border: 1px solid var(--border); border-radius: 8px; outline:none; }
-        .chat-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
-        .bubble { padding: 12px 16px; border-radius: 12px; font-size: 13px; max-width: 90%; white-space: pre-wrap; line-height: 1.5; }
-        .bubble-ai { background: #1E293B; color: #E2E8F0; }
-        .bubble-user { align-self: flex-end; background: var(--brand); color: #022c22; font-weight: 600; margin-left: auto; }
-        .input-area { padding: 20px; border-top: 1px solid #334155; }
-        .chat-input { width: 100%; background: #020617; border: 1px solid #334155; color: white; padding: 12px; border-radius: 8px; outline: none; resize: none; height: 45px; font-size:13px; }
-        .tabs { display: flex; gap: 4px; background: #020617; padding: 4px; border-radius: 8px; margin-top: 10px; }
-        .tab { flex: 1; text-align: center; padding: 8px; font-size: 11px; font-weight: 700; cursor: pointer; border-radius: 6px; color: #94A3B8; }
-        .tab.active { background: #1E293B; color: white; }
         .toast { position: fixed; top: 20px; right: 20px; background: white; padding: 16px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-left: 4px solid var(--brand); z-index: 100; display:none; }
-        .logs-list { flex:1; overflow-y:auto; } .log-item{ padding:15px; border-bottom:1px solid #334155; font-size:12px; }
+        .logs-list { flex:1; overflow-y:auto; } .log-item{ padding:15px; border-bottom:1px solid #1E293B; font-size:12px; color:#94A3B8; }
     </style>
 </head>
 <body>
@@ -99,13 +89,13 @@
     <div id="dayEditor" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
-                <div class="modal-title">Detalhes de <span id="editorDateDisplay"></span></div>
-                <i class="ph-bold ph-x" style="cursor:pointer; font-size:20px;" onclick="closeEditor()"></i>
+                <div style="font-size:18px; font-weight:800;">Editar <span id="editorDateDisplay" style="color:var(--brand);"></span></div>
+                <i class="ph-bold ph-x" style="cursor:pointer; font-size:20px; color:var(--txt-secondary);" onclick="closeEditor()"></i>
             </div>
             <div class="modal-body" id="editorList"></div>
-            <div class="modal-footer" style="background:white; border-top:1px solid var(--border);">
-                <button class="btn" onclick="addEditorItem()"><i class="ph-bold ph-plus"></i> Adicionar Item</button>
-                <button class="btn btn-primary" onclick="saveEditor()"><i class="ph-bold ph-check"></i> Salvar Alterações</button>
+            <div class="modal-footer" style="padding:16px 24px; background:white; border-top:1px solid var(--border); display:flex; justify-content:space-between;">
+                <button class="btn" onclick="addEditorItem()"><i class="ph-bold ph-plus"></i> Adicionar</button>
+                <button class="btn btn-primary" onclick="saveEditor()"><i class="ph-bold ph-check"></i> Salvar Tudo</button>
             </div>
         </div>
     </div>
@@ -113,7 +103,7 @@
     <div id="auth-screen">
         <div class="login-box">
             <div style="font-size:40px; color:var(--brand); margin-bottom:10px;"><i class="ph-bold ph-calendar-check"></i></div>
-            <h2 style="color:var(--txt-primary);">Awake Calendar</h2>
+            <h2 style="margin:0 0 20px 0; color:var(--txt-primary);">Awake OS</h2>
             <input type="text" id="nameInput" class="login-input" placeholder="Seu Nome">
             <button class="btn btn-primary" style="width:100%; justify-content:center;" onclick="doLogin()">ENTRAR</button>
         </div>
@@ -123,15 +113,15 @@
 
     <div class="sidebar">
         <div class="brand-section">
-            <div class="app-title"><i class="ph-bold ph-calendar-check" style="color:var(--brand);"></i> Awake Calendar</div>
-            <div style="font-size:12px; color:#94A3B8;">Bem-vinda, <b id="userNameDisplay" style="color:white;"></b></div>
+            <div class="app-title"><i class="ph-bold ph-calendar-check" style="color:var(--brand);"></i> Awake</div>
+            <div style="font-size:12px; color:#94A3B8;">Conectado como <b id="userNameDisplay" style="color:white;"></b></div>
             <div class="tabs">
-                <div class="tab active" onclick="switchTab('chat')">CHAT IA</div>
-                <div class="tab" onclick="switchTab('history')">HISTÓRICO</div>
+                <div class="tab active" onclick="switchTab('chat')">CHAT</div>
+                <div class="tab" onclick="switchTab('history')">LOGS</div>
             </div>
         </div>
         <div id="chatView" style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
-            <div class="chat-scroll" id="chatHistory"><div class="msg-group"><div class="bubble bubble-ai">Olá! Pode falar sobre qualquer assunto ou pedir ajustes na agenda.</div></div></div>
+            <div class="chat-scroll" id="chatHistory"><div class="msg-group"><div class="bubble bubble-ai">Olá! Pode falar.</div></div></div>
             <div class="input-area">
                 <textarea id="userInput" class="chat-input" placeholder="Digite..." rows="1"></textarea>
             </div>
@@ -141,10 +131,7 @@
 
     <div class="main">
         <div class="top-bar">
-            <div>
-                <span class="month-title" id="monthTitle"></span> 
-                <span class="month-year">2026</span>
-            </div>
+            <div><span class="month-title" id="monthTitle"></span> <span style="font-size:20px; color:var(--txt-secondary);">2026</span></div>
             <div style="display:flex; gap:8px;">
                 <button class="btn" onclick="goToToday()">Hoje</button>
                 <button class="btn" onclick="downloadImage()"><i class="ph-bold ph-camera"></i></button>
@@ -195,16 +182,18 @@
         }
         async function loadEvents() { try { const r = await fetch('/api/get_events'); dbEvents = await r.json(); render(); } catch(e){} }
 
-        // --- EDITOR DINÂMICO ---
+        // --- EDITOR INTELIGENTE ---
         function openEditor(dateStr) {
             currentEditingDate = dateStr;
-            document.getElementById('editorDateDisplay').innerText = dateStr.split('-').reverse().join('/');
+            const parts = dateStr.split('-');
+            document.getElementById('editorDateDisplay').innerText = `${parts[2]}/${parts[1]}/${parts[0]}`;
             const list = document.getElementById('editorList');
             list.innerHTML = '';
             quillInstances = {};
 
             const items = getEventsForDate(dateStr); 
-            items.sort((a, b) => { // Feriados no topo
+            // Ordena para que Feriados fiquem no topo visualmente
+            items.sort((a, b) => {
                 const score = t => (t === 'c-fer' || t === 'c-com') ? 0 : 1;
                 return score(a.type) - score(b.type);
             });
@@ -227,18 +216,17 @@
 
             const div = document.createElement('div');
             div.className = 'editor-item';
-            
             const editorId = 'quill-' + Date.now() + Math.random().toString(36).substr(2, 9);
             const sel = (val) => val === type ? 'selected' : '';
             
-            // Lógica: Se for feriado, esconde campos de hora/instrutor
+            // Se for feriado, esconde campos complexos
             const isSimple = (type === 'c-fer' || type === 'c-com' || type === 'c-off');
-            const simpleStyle = isSimple ? 'display:none;' : 'display:block;';
+            const simpleStyle = isSimple ? 'display:none;' : 'display:flex;';
 
             div.innerHTML = `
                 <div class="drag-handle"><i class="ph-bold ph-dots-six-vertical"></i></div>
                 <div style="flex:1;">
-                    <div class="editor-row">
+                    <div class="ed-row">
                         <select class="ed-select" onchange="toggleFields(this)">
                             <option value="c-esp" ${sel('c-esp')}>★ Especial</option>
                             <option value="c-sh" ${sel('c-sh')}>♫ SH (Verde)</option>
@@ -248,11 +236,11 @@
                             <option value="c-com" ${sel('c-com')}>📅 Data</option>
                         </select>
                         <input type="text" class="ed-input ed-title" value="${title}" placeholder="Nome do Evento">
-                        <div class="complex-fields" style="display:flex; gap:10px; ${simpleStyle}">
+                        <div class="complex-fields" style="gap:10px; ${simpleStyle}">
                             <input type="time" class="ed-input ed-time" value="${time}">
                             <input type="text" class="ed-input ed-inst" value="${instructor}" placeholder="Instrutor">
                         </div>
-                        <div style="cursor:pointer; color:#EF4444;" onclick="this.closest('.editor-item').remove()"><i class="ph-bold ph-trash"></i></div>
+                        <div style="cursor:pointer; color:#EF4444; margin-left:auto;" onclick="this.closest('.editor-item').remove()"><i class="ph-bold ph-trash" style="font-size:18px;"></i></div>
                     </div>
                     <div id="${editorId}"></div>
                 </div>
@@ -262,7 +250,7 @@
             const quill = new Quill('#'+editorId, {
                 theme: 'snow',
                 placeholder: 'Detalhes completos (cole do Docs)...',
-                modules: { toolbar: [ [{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline'], [{ 'list': 'ordered'}, { 'list': 'bullet' }], [{ 'indent': '-1'}, { 'indent': '+1' }], ['link', 'image', 'clean'] ] }
+                modules: { toolbar: [ [{ 'header': [1, 2, false] }], ['bold', 'italic', 'underline', 'strike'], [{ 'color': [] }, { 'background': [] }], [{ 'list': 'ordered'}, { 'list': 'bullet' }], [{ 'align': [] }], ['link', 'clean'] ] }
             });
             if(details) quill.root.innerHTML = details; 
             quillInstances[editorId] = quill;
@@ -301,10 +289,11 @@
             });
             closeEditor();
             await loadEvents();
+            showToast("Alterações salvas!");
         }
         function closeEditor() { document.getElementById('dayEditor').style.display = 'none'; }
 
-        // --- CORE LOGIC (JANUARY FIX) ---
+        // --- CORE LOGIC ---
         function getEventsForDate(ds) {
             const p = ds.split('-'); 
             const dt = new Date(p[0], p[1]-1, p[2], 12, 0, 0); 
@@ -312,6 +301,7 @@
             const m = dt.getMonth() + 1;
             let list = [];
             
+            // 1. Banco
             const ex = dbEvents.find(e => e.data === ds);
             if(ex) {
                 if(ex.tipo === 'cancelado') return [];
@@ -319,11 +309,14 @@
                     const parsed = JSON.parse(ex.detalhes);
                     if(Array.isArray(parsed)) return parsed;
                 } catch(e) {}
-                // Fallback legado
-                return [{ time:'', title:ex.descricao, instructor:'', type:ex.tipo, details:ex.detalhes }];
+                // Fallback (se falhar parsing)
+                return []; 
             }
 
+            // 2. Feriados
             if(FERIADOS[ds]) list.push({ time: '', title: FERIADOS[ds].nome, instructor: '', type: FERIADOS[ds].tipo==='fer'?'c-fer':'c-com' });
+            
+            // 3. Agenda Fixa
             if(wd===2 && ![1,7].includes(m)) list.push({ time: "08:15", title: "Talk Med.", instructor: "Teca", type: 'c-teca' });
             
             const shMap = { 1: {t: "19:00", i: "Haran"}, 2: {t: "19:00", i: "Karina"}, 3: {t: "19:00", i: "Pat"}, 4: {t: "19:00", i: "Pat"}, 5: {t: "10:00", i: "Haran"} };
@@ -338,13 +331,13 @@
             document.getElementById('monthTitle').innerText = MONTHS[currMonth];
             g.innerHTML = "";
             
-            // FIX JANEIRO: Calcular primeiro dia do mês corretamente
+            // Fix Janeiro (start day)
             const firstDay = new Date(2026, currMonth-1, 1).getDay();
             const daysInMonth = new Date(2026, currMonth, 0).getDate();
             const today = new Date();
             const is2026 = today.getFullYear() === 2026;
 
-            for(let i=0; i<firstDay; i++) g.innerHTML += `<div style="background:transparent"></div>`;
+            for(let i=0; i<firstDay; i++) g.innerHTML += `<div></div>`;
 
             for(let d=1; d<=daysInMonth; d++) {
                 const mStr = currMonth.toString().padStart(2,'0');
@@ -357,13 +350,10 @@
                 events.forEach(ev => {
                     const hasDet = ev.details && ev.details.length > 20 ? 'has-details' : '';
                     
-                    // RENDERIZAÇÃO DUAL: SIMPLES vs ESTRUTURADA
                     if(ev.type === 'c-fer' || ev.type === 'c-com' || ev.type === 'c-off') {
-                        // Simples (Sem hora/instrutor)
                         const icon = ev.type==='c-fer'?'🎈':(ev.type==='c-off'?'💤':'📅');
-                        html += `<div class="chip ${ev.type} ${hasDet}">${icon} ${ev.title}</div>`;
+                        html += `<div class="chip ${ev.type} ${hasDet}">${icon} <span class="chip-title">${ev.title}</span></div>`;
                     } else {
-                        // Completa
                         const tShow = ev.time ? `<span class="chip-time">${ev.time.replace(':', 'h')}</span>` : '';
                         const iShow = ev.instructor ? `<span class="chip-inst">(${ev.instructor})</span>` : '';
                         html += `<div class="chip ${ev.type} ${hasDet}">${tShow}<span class="chip-title">${ev.title}</span>${iShow}</div>`;
@@ -374,12 +364,28 @@
             }
         }
         
-        function downloadImage() { const n = document.querySelector('.main'); html2canvas(n, { scale: 2, backgroundColor: "#F8FAFC" }).then(c => { const l = document.createElement('a'); l.download = `Awake_${MONTHS[currMonth]}.png`; l.href = c.toDataURL(); l.click(); }); }
+        function downloadImage() { const n = document.querySelector('.main'); html2canvas(n, { scale: 2, backgroundColor: "#F3F4F6" }).then(c => { const l = document.createElement('a'); l.download = `Awake_${MONTHS[currMonth]}.png`; l.href = c.toDataURL(); l.click(); }); }
         function goToToday() { currMonth = new Date().getMonth() + 1; render(); }
-        async function loadLogs(){ try{ const r=await fetch('/api/get_logs'); const d=await r.json(); document.getElementById('logsList').innerHTML=d.map(l=>`<div class="log-item"><div><b>${l.user_name}</b> <span style="opacity:0.6">${l.action_summary}</span></div><button class="undo-btn" onclick="undo(${l.id})">DESFAZER</button></div>`).join(''); }catch{} }
-        async function undo(id){ if(confirm("Desfazer?")){ await fetch('/api/undo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({log_id:id})}); await loadEvents(); loadLogs(); } }
+        function showToast(m) { const t=document.getElementById('toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); }
+        async function loadLogs(){ try{ const r=await fetch('/api/get_logs'); const d=await r.json(); document.getElementById('logsList').innerHTML=d.map(l=>`<div class="log-item"><div><b>${l.user_name}</b> <span style="opacity:0.6; margin-left:5px;">${l.action_summary}</span></div><div style="font-size:10px; opacity:0.5; margin-top:4px;">${new Date(l.created_at).toLocaleString()}</div></div>`).join(''); }catch{} }
         function switchTab(t){ document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active')); event.target.classList.add('active'); document.getElementById('chatView').style.display=t==='chat'?'flex':'none'; document.getElementById('historyView').style.display=t==='history'?'flex':'none'; if(t==='history')loadLogs(); }
-        async function sendMessage(){ const t=document.getElementById('userInput').value; if(!t)return; addBubble(t,'user'); document.getElementById('userInput').value=''; const l=addBubble('...','ai',true); try{ const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,history:chatContext,user:currUser})}); const d=await r.json(); document.getElementById(l).remove(); if(d.ok){ addBubble(d.reply,'ai'); chatContext.push({role:'user',content:t},{role:'assistant',content:d.reply}); if(d.actions_count>0) loadEvents(); }else addBubble('Erro','ai'); }catch{document.getElementById(l).remove();addBubble('Erro','ai');} }
+        
+        async function sendMessage(){ 
+            const t=document.getElementById('userInput').value; if(!t)return; 
+            addBubble(t,'user'); document.getElementById('userInput').value=''; 
+            const l=addBubble('...','ai',true); 
+            try{ 
+                const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,history:chatContext,user:currUser})}); 
+                const d=await r.json(); 
+                document.getElementById(l).remove(); 
+                if(d.ok){ 
+                    addBubble(d.reply,'ai'); 
+                    chatContext.push({role:'user',content:t},{role:'assistant',content:d.reply}); 
+                    if(d.actions_count>0) { loadEvents(); showToast("Agenda atualizada!"); }
+                }else addBubble('Erro: '+d.reply,'ai'); 
+            }catch(e){ document.getElementById(l).remove(); addBubble('Erro de conexão','ai'); } 
+        }
+        
         function addBubble(h,t,r=false){ const b=document.getElementById('chatHistory'); const d=document.createElement('div'); d.className='msg-group'; d.innerHTML=`<div class="bubble bubble-${t}">${h}</div>`; if(r) d.id='temp'; b.appendChild(d); b.scrollTop=b.scrollHeight; return r?'temp':null; }
         function changeMonth(v) { currMonth+=v; if(currMonth>12)currMonth=1; if(currMonth<1)currMonth=12; render(); }
         function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.overlay').classList.toggle('active'); }
