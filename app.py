@@ -52,7 +52,7 @@ def undo():
 def save_day():
     d = request.json
     dt = d['date']
-    evs = d['events'] # Agora vem lista de objetos {time, title, instructor...}
+    evs = d['events']
     try:
         exist = supabase.table("excecoes").select("*").eq("data", dt).execute()
         prev = exist.data[0] if exist.data else None
@@ -60,18 +60,23 @@ def save_day():
         if not evs:
             supabase.table("excecoes").upsert({"data":dt, "tipo":"cancelado", "descricao":"Limpo", "detalhes":""}).execute()
         else:
-            # Cria uma string visual para o campo 'descricao' (retrocompatibilidade)
-            # Ex: "19:00 SH (Haran) | 20:00 Yoga (Pat)"
-            visual_desc = " | ".join([f"{e.get('time','')} {e.get('title','')} ({e.get('instructor','')})" for e in evs])
+            # Gera descrição visual simples para o banco
+            visuais = []
+            for e in evs:
+                if e.get('type') in ['c-fer', 'c-com', 'c-off']:
+                    visuais.append(e.get('title'))
+                else:
+                    visuais.append(f"{e.get('time','')} {e.get('title','')} ({e.get('instructor','')})")
             
-            # Salva o JSON estruturado completo em 'detalhes'
+            visual_desc = " | ".join(visuais)
+            
             supabase.table("excecoes").upsert({
                 "data": dt, "tipo": evs[0].get('type','especial'), 
                 "descricao": visual_desc, 
                 "detalhes": json.dumps(evs)
             }).execute()
             
-        supabase.table("audit_logs").insert({"user_name":d.get('user','Manual'),"target_date":dt,"action_summary":"Edição Estruturada","previous_state":prev}).execute()
+        supabase.table("audit_logs").insert({"user_name":d.get('user','Manual'),"target_date":dt,"action_summary":"Edição Manual","previous_state":prev}).execute()
         return jsonify({"ok":True})
     except Exception as e: return jsonify({"ok":False,"msg":str(e)})
 
@@ -86,40 +91,40 @@ def chat():
     hoje = datetime.now(SP_TZ).strftime("%Y-%m-%d (%A)")
     
     try:
-        # Contexto do Banco
         current_data = supabase.table("excecoes").select("data, descricao, tipo").execute().data
         db_context = json.dumps(current_data)
     except: db_context = "[]"
 
     sys_prompt = f"""
-    Você é a IA do Awake OS. Hoje: {hoje}.
+    Você é a IA Assistente do "Calendário Awake 2026". Hoje: {hoje}.
     
-    >>> AGENDA PADRÃO (Matriz):
+    >>> SEU PAPEL:
+    1. Você é uma assistente geral e amigável. Pode conversar sobre a vida, filosofia ou dúvidas gerais.
+    2. Você é a guardiã do calendário.
+    
+    >>> AGENDA PADRÃO (Matriz Fixa):
     - Seg: 19h SH (Haran)
     - Ter: 08h15 Talk Med. (Teca) | 19h SH (Karina)
     - Qua/Qui: 19h SH (Pat)
     - Sex: 10h SH (Haran)
     - Sáb: 10h SH (Karina) | 15h SH (Karina)
     
-    >>> DB ATUAL: {db_context}
+    >>> EXCEÇÕES NO BANCO: {db_context}
     
-    >>> INSTRUÇÃO CRÍTICA DE DADOS:
-    Ao criar eventos, você DEVE separar os dados.
-    Formato JSON de cada ação:
-    {{
-        "date": "YYYY-MM-DD",
-        "type": "especial" (ou "recesso"/"cancelado"),
-        "time": "HH:MM" (ex: "19:00"),
-        "title": "Nome da Experiência" (ex: "Sound Healing"),
-        "instructor": "Nome do Instrutor" (ex: "Haran"),
-        "rich_details": "HTML com detalhes (opcional)"
-    }}
+    >>> REGRAS DE AÇÃO (CRÍTICO):
+    - Se o usuário APENAS conversar ou tirar dúvida ("Que dia é hoje?", "Tem aula quarta?"), responda no campo 'reply' e deixe 'actions' como lista VAZIA []. NÃO CADASTRE NADA.
+    - Só gere 'actions' se houver uma ORDEM CLARA de modificação ("Marque...", "Cancele...", "Mude...").
+    - Se a ordem for ambígua, PERGUNTE antes de agir (retorne actions []).
     
-    Para cancelamentos, 'time', 'title' e 'instructor' podem ser vazios.
-    Se o usuário pedir algo vago ("Agende Yoga sábado"), infira horário e instrutor se possível ou invente algo lógico para preencher os campos obrigatórios.
+    >>> DADOS:
+    - Feriados/Datas Comemorativas: Não precisam de hora/instrutor.
+    - Experiências (SH, Talk, Especial): PRECISAM de time, title, instructor.
     
     >>> OUTPUT JSON:
-    {{ "reply": "...", "actions": [...] }}
+    {{ 
+        "reply": "...", 
+        "actions": [ {{ "date": "YYYY-MM-DD", "type": "...", "time": "...", "title": "...", "instructor": "...", "rich_details": "..." }} ] 
+    }}
     """
 
     try:
@@ -127,36 +132,41 @@ def chat():
         ai_resp = json.loads(comp.choices[0].message.content)
         cnt = 0
         
+        # Só processa se tiver ações reais
         for a in ai_resp.get('actions',[]):
             try:
                 exist = supabase.table("excecoes").select("*").eq("data", a['date']).execute()
                 prev = exist.data[0] if exist.data else None
                 
-                # Monta a estrutura para salvar no banco
-                # Se for cancelado, salva simples. Se for evento, salva estruturado.
+                # Monta estrutura
+                structured_event = [{
+                    "time": a.get('time', ''),
+                    "title": a.get('title', 'Evento'),
+                    "instructor": a.get('instructor', ''),
+                    "details": a.get('rich_details', ''),
+                    "type": a.get('type', 'especial')
+                }]
+                
+                # Descrição visual simples
+                if a['type'] in ['c-fer', 'c-com', 'recesso']:
+                    desc_str = a.get('title', 'Evento')
+                else:
+                    desc_str = f"{a.get('time')} {a.get('title')} ({a.get('instructor')})"
+
+                payload = {
+                    "data": a['date'], 
+                    "tipo": a['type'], 
+                    "descricao": desc_str, 
+                    "detalhes": json.dumps(structured_event)
+                }
+                
                 if a['type'] == 'cancelado':
                     payload = {"data":a['date'], "tipo":"cancelado", "descricao":"Cancelado", "detalhes":""}
-                else:
-                    # Cria lista de eventos (suporta múltiplos no futuro, agora 1 por ação)
-                    structured_event = [{
-                        "time": a.get('time', '00:00'),
-                        "title": a.get('title', 'Evento'),
-                        "instructor": a.get('instructor', 'Equipe'),
-                        "details": a.get('rich_details', ''),
-                        "type": a.get('type', 'especial')
-                    }]
-                    desc_str = f"{a.get('time')} {a.get('title')} ({a.get('instructor')})"
-                    payload = {
-                        "data": a['date'], 
-                        "tipo": a['type'], 
-                        "descricao": desc_str, 
-                        "detalhes": json.dumps(structured_event)
-                    }
 
                 supabase.table("excecoes").upsert(payload).execute()
                 supabase.table("audit_logs").insert({"user_name":user_name, "target_date":a['date'], "action_summary":f"{a['type']} IA", "previous_state":prev}).execute()
                 cnt+=1
-            except Exception as e: print(f"Erro Loop IA: {e}")
+            except: pass
             
         return jsonify({"ok":True, "reply": ai_resp.get("reply", "Feito."), "actions_count":cnt})
     except Exception as e: return jsonify({"ok":False,"reply":str(e)})
