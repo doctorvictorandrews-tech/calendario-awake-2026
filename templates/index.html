@@ -3,418 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Awake OS 2026</title>
+    <title>Awake OS AI</title>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
-        /* ================= VARIABLES ================= */
+        /* DESIGN SYSTEM ECOFIN DARK */
         :root {
-            --bg-body: #050505;
-            --bg-surface: #0F0F0F;
-            --glass: rgba(255, 255, 255, 0.02);
-            --glass-hover: rgba(255, 255, 255, 0.05);
+            --bg: #050505;
+            --glass: rgba(255, 255, 255, 0.03);
             --border: rgba(255, 255, 255, 0.08);
-            --text-primary: #FFFFFF;
-            --text-secondary: #9CA3AF;
-            
-            /* Cores da Marca Awake (Elevadas) */
-            --green-glow: #10B981;
-            --gold-accent: #D9890D;
-            --purple-accent: #8B5CF6;
-            --danger: #EF4444;
-            
-            --font-display: 'Manrope', sans-serif;
-            --font-body: 'Inter', sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
+            --text-main: #FFFFFF;
+            --text-sec: #9CA3AF;
+            --primary: #10B981; /* Verde Awake */
+            --accent: #D9890D; /* Dourado */
         }
 
-        /* ================= RESET & BASE ================= */
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background-color: var(--bg); color: var(--text-main); font-family: 'Inter', sans-serif; height: 100vh; display: flex; overflow: hidden; }
+
+        /* FX */
+        .ambient-light { position: fixed; width: 800px; height: 800px; background: var(--primary); filter: blur(250px); opacity: 0.06; border-radius: 50%; pointer-events: none; z-index: -1; }
         
-        body {
-            background-color: var(--bg-body);
-            color: var(--text-primary);
-            font-family: var(--font-body);
-            height: 100vh;
-            overflow: hidden;
-            display: flex;
-        }
-
-        /* ================= BACKGROUND FX (O "Visual Ecofin") ================= */
-        .bg-blob {
-            position: fixed; filter: blur(120px); z-index: -1; opacity: 0.15;
-            animation: blobMove 20s infinite alternate ease-in-out; border-radius: 50%;
-        }
-        .blob-1 { top: -10%; left: -10%; width: 50vw; height: 50vw; background: var(--green-glow); }
-        .blob-2 { bottom: -20%; right: -20%; width: 60vw; height: 60vw; background: var(--gold-accent); animation-delay: -10s; }
-        @keyframes blobMove { 0% { transform: scale(1); } 100% { transform: scale(1.1); } }
-
-        /* ================= SIDEBAR (IA CONTROL) ================= */
+        /* SIDEBAR */
         .sidebar {
-            width: 380px;
-            background: rgba(8, 8, 8, 0.8);
-            backdrop-filter: blur(20px);
-            border-right: 1px solid var(--border);
-            padding: 40px 30px;
-            display: flex;
-            flex-direction: column;
-            z-index: 100;
-            box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+            width: 400px; background: rgba(10,10,10,0.95); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; z-index: 10; backdrop-filter: blur(20px);
         }
-
-        .logo {
-            font-family: var(--font-display);
-            font-weight: 800; font-size: 24px; letter-spacing: -1px;
-            margin-bottom: 60px; display: flex; align-items: center; gap: 12px;
+        .brand {
+            padding: 30px; font-family: 'Manrope'; font-weight: 800; font-size: 20px; 
+            letter-spacing: -0.5px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
         }
-        .logo i { color: var(--green-glow); font-size: 28px; }
-
-        .ai-status {
-            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-            border-radius: 16px; padding: 20px; margin-bottom: auto;
-            min-height: 100px;
-        }
-        .ai-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; }
-        .ai-feedback { font-size: 14px; line-height: 1.5; color: white; }
-        .typing-indicator { color: var(--green-glow); font-size: 12px; display: none; margin-top: 10px; }
-
-        .input-area { position: relative; margin-top: 20px; }
-        .cmd-input {
-            width: 100%; background: #121212; border: 1px solid var(--border);
-            color: white; padding: 20px; padding-right: 60px; border-radius: 16px;
-            font-family: var(--font-body); font-size: 15px; outline: none;
-            transition: 0.3s; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        .cmd-input:focus { border-color: var(--green-glow); box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
         
+        .chat-history {
+            flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
+        }
+        
+        /* Mensagens */
+        .msg { max-width: 85%; padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .msg-user { align-self: flex-end; background: var(--primary); color: #000; border-bottom-right-radius: 2px; }
+        .msg-ai { align-self: flex-start; background: var(--glass); border: 1px solid var(--border); color: #ddd; border-bottom-left-radius: 2px; }
+        .ai-name { font-size: 10px; color: var(--text-sec); margin-bottom: 4px; font-weight: 700; text-transform: uppercase; }
+
+        .input-area { padding: 20px; border-top: 1px solid var(--border); background: #080808; }
+        .input-wrapper { position: relative; }
+        .chat-input {
+            width: 100%; background: #151515; border: 1px solid #333; color: white;
+            padding: 16px; padding-right: 50px; border-radius: 12px; font-family: 'Inter'; font-size: 14px; outline: none; transition: 0.3s;
+        }
+        .chat-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1); }
         .send-btn {
-            position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
-            background: var(--green-glow); color: black; border: none;
-            width: 36px; height: 36px; border-radius: 10px;
-            cursor: pointer; display: grid; place-items: center; transition: 0.2s;
+            position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+            background: transparent; border: none; color: var(--primary); font-size: 20px;
+            cursor: pointer; padding: 5px; border-radius: 8px; transition: 0.2s;
         }
-        .send-btn:hover { transform: translateY(-50%) scale(1.1); box-shadow: 0 0 15px var(--green-glow); }
+        .send-btn:hover { background: rgba(16, 185, 129, 0.1); }
 
-        /* ================= MAIN CONTENT ================= */
-        .main { flex-grow: 1; padding: 40px 60px; overflow-y: auto; position: relative; }
-
-        /* Header */
-        .header {
-            display: flex; justify-content: space-between; align-items: flex-end;
-            margin-bottom: 40px; padding-bottom: 20px; border-bottom: 1px solid var(--border);
-        }
-        .month-display { font-family: var(--font-display); font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: -2px; color: white; }
-        .year-display { font-family: var(--font-mono); color: var(--gold-accent); font-size: 16px; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 5px; }
+        /* CALENDAR AREA */
+        .main { flex-grow: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; }
         
-        .nav-group { display: flex; gap: 15px; }
-        .nav-btn {
-            width: 50px; height: 50px; border-radius: 12px; background: var(--glass);
-            border: 1px solid var(--border); color: white; cursor: pointer;
-            display: grid; place-items: center; font-size: 20px; transition: 0.3s;
-        }
-        .nav-btn:hover { border-color: var(--green-glow); background: rgba(255,255,255,0.05); }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .month-title { font-family: 'Manrope'; font-size: 48px; font-weight: 800; color: white; }
+        
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 15px; }
+        .weekday { color: var(--text-sec); font-size: 11px; text-transform: uppercase; font-weight: 700; text-align: center; margin-bottom: 10px; letter-spacing: 1px; }
 
-        /* Calendar Grid */
-        .grid-header {
-            display: grid; grid-template-columns: repeat(7, 1fr); gap: 20px; margin-bottom: 20px;
-        }
-        .weekday {
-            text-align: center; color: var(--text-secondary); font-family: var(--font-mono);
-            font-size: 12px; text-transform: uppercase; letter-spacing: 2px;
-        }
-
-        .calendar-grid {
-            display: grid; grid-template-columns: repeat(7, 1fr); gap: 20px;
-            /* Altura fixa para manter layout rígido e bonito */
-            min-height: 700px;
-        }
-
-        /* ================= DAY CARD (The Star) ================= */
         .day-card {
-            background: var(--glass);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 16px;
-            display: flex; flex-direction: column;
-            transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            position: relative;
-            backdrop-filter: blur(10px);
-            min-height: 160px;
+            background: var(--glass); border: 1px solid var(--border); border-radius: 14px;
+            min-height: 150px; padding: 12px; display: flex; flex-direction: column;
+            transition: 0.3s; position: relative; backdrop-filter: blur(10px);
         }
+        .day-card:hover { transform: translateY(-5px); border-color: var(--primary); background: rgba(255,255,255,0.05); }
+        
+        .day-num { font-family: 'Manrope'; font-weight: 700; font-size: 18px; color: #555; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .is-today { border-color: var(--primary); background: rgba(16,185,129,0.02); }
+        .is-today .day-num { color: white; }
+        .today-tag { font-size: 9px; background: var(--primary); color: #000; padding: 2px 6px; border-radius: 10px; }
+        
+        /* CHIPS */
+        .chip { font-size: 11px; padding: 6px 10px; border-radius: 6px; margin-bottom: 5px; background: rgba(255,255,255,0.05); border-left: 2px solid #444; color: #ddd; }
+        .c-sh { border-color: #10B981; color: #A7F3D0; background: rgba(16, 185, 129, 0.1); }
+        .c-teca { border-color: #8B5CF6; color: #E9D5FF; background: rgba(139, 92, 246, 0.1); }
+        .c-special { border-color: #D9890D; color: #FEF3C7; background: rgba(217, 137, 13, 0.1); }
+        .c-fer { border-color: #EF4444; color: #FECACA; background: rgba(239, 68, 68, 0.1); }
+        .c-off { border-color: #666; color: #888; border-style: dashed; }
 
-        .day-card:hover {
-            transform: translateY(-8px);
-            border-color: rgba(255,255,255,0.3);
-            background: var(--glass-hover);
-            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.5);
-            z-index: 10;
-        }
-
-        /* Tipografia de Alta Visibilidade */
-        .day-number {
-            font-family: var(--font-display);
-            font-weight: 700;
-            font-size: 28px; /* Grande e visível */
-            color: #555;
-            margin-bottom: 15px;
-            display: flex; justify-content: space-between; align-items: flex-start;
-        }
-
-        .current-month-day .day-number { color: white; }
-        .other-month { opacity: 0.1; pointer-events: none; }
-        .past-day { opacity: 0.4; } /* Passado fica mais apagado */
-
-        /* Highlight Hoje */
-        .is-today {
-            border: 2px solid var(--green-glow);
-            background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%);
-        }
-        .is-today .day-number { color: var(--green-glow); }
-        .today-pill {
-            font-size: 10px; font-weight: 800; text-transform: uppercase;
-            background: var(--green-glow); color: black; padding: 4px 8px; border-radius: 100px;
-        }
-
-        /* Chips de Eventos */
-        .event-stack { display: flex; flex-direction: column; gap: 8px; }
-        .chip {
-            font-size: 11px; padding: 8px 12px; border-radius: 8px;
-            font-weight: 600; line-height: 1.4; border-left: 3px solid;
-            background: rgba(255,255,255,0.03); color: #ddd;
-            transition: 0.2s;
-        }
-        .chip:hover { filter: brightness(1.2); transform: translateX(2px); }
-
-        /* Categorias de Cores */
-        .type-sh { border-color: var(--green-glow); color: #D1FAE5; background: rgba(16, 185, 129, 0.1); }
-        .type-teca { border-color: var(--purple-accent); color: #EDE9FE; background: rgba(139, 92, 246, 0.1); }
-        .type-special { border-color: var(--gold-accent); color: #FEF3C7; background: rgba(217, 137, 13, 0.15); border-width: 0 0 0 4px; }
-        .type-feriado { border-color: var(--danger); color: #FECACA; background: rgba(239, 68, 68, 0.1); }
-        .type-recesso { border-color: #666; color: #999; border-style: dashed; }
-
+        @keyframes popIn { 0% { opacity: 0; transform: translateY(10px); } 100% { opacity: 1; transform: translateY(0); } }
+        .loading-dots:after { content: ' .'; animation: dots 1s steps(5, end) infinite; }
+        @keyframes dots { 0%, 20% { color: rgba(0,0,0,0); } 40% { color: white; } 100% { color: white; } }
     </style>
 </head>
 <body>
-
-    <div class="bg-blob blob-1"></div>
-    <div class="bg-blob blob-2"></div>
+    <div class="ambient-light" style="top: -20%; right: -10%;"></div>
 
     <div class="sidebar">
-        <div class="logo"><i class="ph-fill ph-plant"></i> AWAKE OS</div>
+        <div class="brand"><i class="ph-fill ph-sparkle" style="color:var(--primary)"></i> Awake AI</div>
         
-        <div class="ai-status">
-            <div class="ai-label">System Status</div>
-            <div id="aiFeedback" class="ai-feedback">Sistema online. Aguardando comando...</div>
-            <div id="typing" class="typing-indicator">Processando linguagem natural...</div>
+        <div class="chat-history" id="chatHistory">
+            <div class="msg msg-ai">
+                <div class="ai-name">Assistente</div>
+                Olá! Pode me pedir alterações. Ex: "Troca a aula do dia 20 pela Pat".
+            </div>
         </div>
 
         <div class="input-area">
-            <input type="text" id="cmdInput" class="cmd-input" 
-                   placeholder="Ex: Trocar dia 20 por Workshop..." 
-                   onkeypress="if(event.key==='Enter') sendCmd()">
-            <button class="send-btn" onclick="sendCmd()"><i class="ph-bold ph-paper-plane-right"></i></button>
-        </div>
-        
-        <div style="margin-top: 30px; font-size: 12px; color: #555; line-height: 1.6;">
-            <strong>Dica Pro:</strong> Você pode digitar coisas como "Recesso de carnaval dia 17" ou "Tirar a aula do dia 25".
+            <div class="input-wrapper">
+                <input type="text" id="userInput" class="chat-input" placeholder="Digite aqui..." onkeypress="if(event.key==='Enter') sendMessage()">
+                <button class="send-btn" onclick="sendMessage()"><i class="ph-bold ph-paper-plane-right"></i></button>
+            </div>
         </div>
     </div>
 
     <div class="main">
         <div class="header">
             <div>
-                <div class="year-display">Calendário 2026</div>
-                <div class="month-display" id="monthTitle">JANEIRO</div>
+                <div style="font-family:'JetBrains Mono'; font-size:12px; color:var(--text-sec); letter-spacing:2px; margin-bottom:5px;">2026</div>
+                <div class="month-title" id="monthTitle">JANEIRO</div>
             </div>
-            <div class="nav-group">
-                <div class="nav-btn" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></div>
-                <div class="nav-btn" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></div>
+            <div>
+                <button onclick="changeMonth(-1)" style="background:none; border:1px solid #333; color:white; padding:10px; border-radius:8px; cursor:pointer;"><</button>
+                <button onclick="changeMonth(1)" style="background:none; border:1px solid #333; color:white; padding:10px; border-radius:8px; cursor:pointer;">></button>
             </div>
         </div>
 
-        <div class="grid-header">
-            <div class="weekday">DOM</div>
-            <div class="weekday">SEG</div>
-            <div class="weekday">TER</div>
-            <div class="weekday">QUA</div>
-            <div class="weekday">QUI</div>
-            <div class="weekday">SEX</div>
-            <div class="weekday">SÁB</div>
-        </div>
-
-        <div class="calendar-grid" id="calendarGrid">
-            </div>
+        <div class="calendar-grid" id="grid"></div>
     </div>
 
     <script>
         const MONTHS = ["", "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
-        let currentMonth = new Date().getMonth() + 1;
-        // Se estivermos em 2026, usa mês atual, senão começa em Janeiro
-        if(new Date().getFullYear() !== 2026) currentMonth = 1;
-        
+        let currMonth = new Date().getMonth() + 1;
+        if(new Date().getFullYear() != 2026) currMonth = 1;
         let dbEvents = [];
 
-        // Feriados Estáticos
         const FERIADOS = {
-            "2026-01-01": "Confraternização Universal",
-            "2026-01-25": "Aniversário de SP",
-            "2026-02-17": "Carnaval",
-            "2026-04-03": "Sexta-feira Santa",
-            "2026-04-21": "Tiradentes",
-            "2026-05-01": "Dia do Trabalhador",
-            "2026-06-04": "Corpus Christi",
-            "2026-07-09": "Rev. Constitucionalista",
-            "2026-09-07": "Independência",
-            "2026-10-12": "N. Sra. Aparecida",
-            "2026-11-02": "Finados",
-            "2026-11-15": "Proclamação da República",
-            "2026-11-20": "Dia da Consciência Negra",
-            "2026-12-25": "Natal"
+            "2026-01-01": "Confraternização", "2026-01-25": "Aniversário SP", "2026-02-17": "Carnaval",
+            "2026-04-03": "Sexta Santa", "2026-04-21": "Tiradentes", "2026-05-01": "Trabalhador",
+            "2026-06-04": "Corpus Christi", "2026-07-09": "Rev. 32", "2026-09-07": "Independência",
+            "2026-10-12": "N. Sra. Aparecida", "2026-11-02": "Finados", "2026-11-15": "Proclamação",
+            "2026-11-20": "Consciência", "2026-12-25": "Natal"
         };
 
-        // Inicialização
         async function init() {
-            await fetchEvents();
+            await loadEvents();
             render();
         }
 
-        // Buscar dados
-        async function fetchEvents() {
+        async function loadEvents() {
             try {
-                const res = await fetch('/api/get_events');
-                dbEvents = await res.json();
+                let r = await fetch('/api/get_events');
+                dbEvents = await r.json();
                 render();
-            } catch(e) { console.error("Erro ao buscar dados", e); }
+            } catch(e) { console.error(e); }
         }
 
-        // Renderizador Principal
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if(!text) return;
+
+            addMsg(text, 'user');
+            input.value = "";
+            const loadingId = addMsg("Pensando<span class='loading-dots'></span>", 'ai', true);
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ text: text, month: currMonth })
+                });
+                const data = await res.json();
+                document.getElementById(loadingId).remove();
+                
+                if(data.ok) {
+                    addMsg(data.reply, 'ai');
+                    if(data.actions_count > 0) await loadEvents();
+                } else {
+                    addMsg("Erro: " + data.reply, 'ai');
+                }
+            } catch(e) {
+                document.getElementById(loadingId).remove();
+                addMsg("Erro de conexão.", 'ai');
+            }
+        }
+
+        function addMsg(html, type, returnId=false) {
+            const box = document.getElementById('chatHistory');
+            const div = document.createElement('div');
+            const id = 'msg-' + Date.now();
+            div.id = id;
+            div.className = `msg msg-${type}`;
+            div.innerHTML = type === 'ai' ? `<div class="ai-name">Assistente</div>${html}` : html;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+            if(returnId) return id;
+        }
+
         function render() {
-            const grid = document.getElementById('calendarGrid');
-            document.getElementById('monthTitle').innerText = MONTHS[currentMonth];
+            const grid = document.getElementById('grid');
+            document.getElementById('monthTitle').innerText = MONTHS[currMonth];
             grid.innerHTML = "";
 
-            const firstDay = new Date(2026, currentMonth - 1, 1).getDay();
-            const daysInMonth = new Date(2026, currentMonth, 0).getDate();
-            
-            // Data real de hoje (para highlight)
-            const realToday = new Date();
-            const is2026 = realToday.getFullYear() === 2026;
+            ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"].forEach(d => {
+                grid.innerHTML += `<div class="weekday">${d}</div>`;
+            });
 
-            // Espaços vazios do mês anterior
-            for (let i = 0; i < firstDay; i++) {
-                grid.innerHTML += `<div class="day-card other-month"></div>`;
-            }
+            const firstDay = new Date(2026, currMonth-1, 1).getDay();
+            const daysInMonth = new Date(2026, currMonth, 0).getDate();
+            const today = new Date();
 
-            // Dias do mês
-            for (let d = 1; d <= daysInMonth; d++) {
-                const dateObj = new Date(2026, currentMonth - 1, d);
-                const dateStr = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
-                const wd = dateObj.getDay(); // 0=Dom, 6=Sab
+            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="day-card" style="opacity:0.1"></div>`;
 
-                let isToday = (is2026 && d === realToday.getDate() && currentMonth === (realToday.getMonth()+1));
-                let isPast = dateObj < realToday; // Para estilo "apagado" no passado
-
-                // MONTAGEM DO HTML DO CONTEÚDO
-                let chipsHTML = "";
-
-                // 1. Verifica Banco de Dados (Prioridade Máxima)
-                const exception = dbEvents.find(e => e.data === dateStr);
-
-                if (exception) {
-                    if (exception.tipo === 'recesso') {
-                        chipsHTML += `<div class="chip type-recesso">💤 ${exception.descricao}</div>`;
-                    } else if (exception.tipo === 'cancelado') {
-                        chipsHTML += `<div class="chip type-recesso" style="text-decoration:line-through">Cancelado</div>`;
-                    } else {
-                        chipsHTML += `<div class="chip type-special">★ ${exception.descricao}</div>`;
-                    }
-                } 
-                // 2. Verifica Feriado
-                else if (FERIADOS[dateStr]) {
-                    chipsHTML += `<div class="chip type-feriado">🎈 ${FERIADOS[dateStr]}</div>`;
-                }
-                // 3. Regras Padrão (Se não houver exceção)
-                else {
-                    // Teca (Terças exceto Jan/Jul)
-                    if (wd === 1 && ![1, 7].includes(currentMonth)) {
-                        chipsHTML += `<div class="chip type-teca">08h15 Talk Med.</div>`;
-                    }
-
-                    // Sound Healing
-                    let sh = "";
-                    if (wd === 0) sh = "19h SH (Haran)";
-                    if (wd === 1) sh = "19h SH (Karina)";
-                    if (wd === 2) sh = "19h SH (Pat)";
-                    if (wd === 3) sh = "19h SH (Pat)";
-                    if (wd === 4) sh = "19h SH (Haran)";
-                    if (wd === 5) sh = "10h SH (Karina)";
-
-                    if (sh) chipsHTML += `<div class="chip type-sh">${sh}</div>`;
-                }
-
-                // Monta o Card Final
-                const todayBadge = isToday ? '<div class="today-pill">HOJE</div>' : '';
-                const activeClass = isPast && !isToday ? 'past-day' : 'current-month-day';
-                const todayClass = isToday ? 'is-today' : '';
-
-                grid.innerHTML += `
-                <div class="day-card ${activeClass} ${todayClass}">
-                    <div class="day-number">
-                        ${d}
-                        ${todayBadge}
-                    </div>
-                    <div class="event-stack">
-                        ${chipsHTML}
-                    </div>
-                </div>
-                `;
-            }
-        }
-
-        // Navegação
-        function changeMonth(delta) {
-            currentMonth += delta;
-            if (currentMonth > 12) currentMonth = 1;
-            if (currentMonth < 1) currentMonth = 12;
-            render();
-        }
-
-        // Enviar Comando (IA)
-        async function sendCmd() {
-            const input = document.getElementById('cmdInput');
-            const txt = input.value;
-            if (!txt) return;
-
-            // UI Feedback
-            const feedback = document.getElementById('aiFeedback');
-            const typing = document.getElementById('typing');
-            
-            feedback.innerHTML = "Analisando solicitação...";
-            feedback.style.color = "#aaa";
-            typing.style.display = "block";
-
-            try {
-                const req = await fetch('/api/command', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: txt })
-                });
-                const res = await req.json();
-
-                typing.style.display = "none";
+            for(let d=1; d<=daysInMonth; d++) {
+                const dateObj = new Date(2026, currMonth-1, d);
+                const dateStr = dateObj.toISOString().split('T')[0];
+                const wd = dateObj.getDay();
+                let isToday = (d === today.getDate() && currMonth === (today.getMonth()+1) && today.getFullYear() === 2026);
                 
-                if (res.ok) {
-                    feedback.innerHTML = `<span style="color:var(--green-glow)">✅ Sucesso!</span><br>Alteração aplicada em <b>${res.date}</b>:<br>"${res.desc}"`;
-                    input.value = "";
-                    await fetchEvents(); // Refresh Grid
+                let html = "";
+                let exc = dbEvents.find(e => e.data === dateStr);
+                
+                if(exc) {
+                    if(exc.tipo === 'recesso') html += `<div class="chip c-off">💤 ${exc.descricao}</div>`;
+                    else if(exc.tipo === 'cancelado') html += `<div class="chip c-off">Cancelado</div>`;
+                    else html += `<div class="chip c-special">★ ${exc.descricao}</div>`;
+                } else if(FERIADOS[dateStr]) {
+                    html += `<div class="chip c-fer">🎈 ${FERIADOS[dateStr]}</div>`;
                 } else {
-                    feedback.innerHTML = `<span style="color:var(--danger)">❌ Erro:</span> ${res.msg}`;
+                    if(wd===1 && ![1,7].includes(currMonth)) html += `<div class="chip c-teca">Talk Med.</div>`;
+                    
+                    let sh = "";
+                    if(wd===0) sh="19h SH (Haran)";
+                    if(wd===1) sh="19h SH (Karina)";
+                    if(wd===2) sh="19h SH (Pat)";
+                    if(wd===3) sh="19h SH (Pat)";
+                    if(wd===4) sh="19h SH (Haran)";
+                    if(wd===5) sh="10h SH (Karina)";
+                    if(sh) html += `<div class="chip c-sh">${sh}</div>`;
                 }
-            } catch (e) {
-                feedback.innerText = "Erro de conexão com o servidor.";
-                typing.style.display = "none";
+
+                let badge = isToday ? `<span class="today-tag">HOJE</span>` : '';
+                let cls = isToday ? 'is-today' : '';
+                
+                grid.innerHTML += `
+                <div class="day-card ${cls}">
+                    <div class="day-num">${d}${badge}</div>
+                    <div>${html}</div>
+                </div>`;
             }
+        }
+
+        function changeMonth(dir) {
+            currMonth += dir;
+            if(currMonth > 12) currMonth = 1;
+            if(currMonth < 1) currMonth = 12;
+            render();
         }
 
         init();
