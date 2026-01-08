@@ -8,91 +8,74 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.min.js"></script>
     
     <style>
-        /* DESIGN SYSTEM (LIGHT MODE CLEAN) */
-        :root {
-            --bg-app: #F8FAFC; 
-            --bg-sidebar: #0F172A; 
-            --bg-card: #FFFFFF;
-            --txt-primary: #0F172A; 
-            --txt-secondary: #64748B; 
-            --txt-inverse: #F8FAFC;
-            --border-light: #E2E8F0; 
-            --border-dark: #1E293B;
-            --brand: #10B981; 
-            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-        }
-
+        /* DESIGN SYSTEM */
+        :root { --bg-app:#F8FAFC; --bg-sidebar:#0F172A; --bg-card:#FFFFFF; --txt-primary:#0F172A; --txt-secondary:#64748B; --border-light:#E2E8F0; --border-dark:#1E293B; --brand:#10B981; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { background-color: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
+        body { background: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
 
-        /* MODAL EDITOR */
+        /* EDITOR MODAL (ATUALIZADO PARA QUILL) */
         .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 200; justify-content: center; align-items: center; }
-        .modal-card { background: white; width: 550px; max-width: 90%; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; max-height: 85vh; }
+        .modal-card { background: white; width: 700px; max-width: 95%; height: 90vh; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-direction: column; }
         .modal-header { padding: 20px; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
         .modal-title { font-size: 18px; font-weight: 800; }
-        .modal-body { padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 15px; }
+        .modal-body { padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 20px; background: #fff; }
         
-        .editor-item { display: flex; gap: 10px; align-items: flex-start; background: white; border: 1px solid var(--border-light); padding: 12px; border-radius: 8px; transition:0.2s; }
-        .editor-item:hover { border-color: #CBD5E1; }
-        .editor-inputs { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-        .ed-row { display: flex; gap: 8px; }
-        .ed-input { flex: 1; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 14px; outline:none; }
+        .editor-item { background: white; border: 1px solid var(--border-light); border-radius: 12px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .editor-header { display: flex; gap: 10px; margin-bottom: 10px; }
+        .ed-input { flex: 1; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-weight: 600; font-size: 14px; outline:none; }
         .ed-select { width: 140px; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 12px; background: #F8FAFC; cursor: pointer; outline:none; }
-        .ed-area { width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-family: 'Inter'; font-size: 12px; resize: vertical; min-height: 60px; outline:none; }
         
-        .btn-del { color: #EF4444; background: #FEF2F2; border: 1px solid #FCA5A5; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; display: grid; place-items: center; transition:0.2s; }
+        /* QUILL OVERRIDES */
+        .ql-container { font-family: 'Inter', sans-serif; font-size: 14px; height: 150px; }
+        .ql-toolbar { border-top-left-radius: 6px; border-top-right-radius: 6px; background: #F8FAFC; border-color: #E2E8F0 !important; }
+        .ql-container.ql-snow { border-bottom-left-radius: 6px; border-bottom-right-radius: 6px; border-color: #E2E8F0 !important; }
+        
+        .btn-del { color: #EF4444; background: #FEF2F2; border: 1px solid #FCA5A5; width: 38px; height: 38px; border-radius: 6px; cursor: pointer; display: grid; place-items: center; transition:0.2s; }
         .btn-del:hover { background: #EF4444; color: white; }
         
         .modal-footer { padding: 20px; border-top: 1px solid var(--border-light); display: flex; justify-content: space-between; background: #F8FAFC; }
-        .btn-save { background: var(--brand); color: white; border: none; padding: 10px 24px; border-radius: 8px; font-weight: 700; cursor: pointer; transition:0.2s; }
+        .btn-save { background: var(--brand); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-weight: 700; cursor: pointer; transition:0.2s; font-size: 14px; }
         .btn-save:hover { filter: brightness(1.1); transform: translateY(-1px); }
-        .btn-add { background: white; border: 1px solid var(--border-light); color: var(--txt-primary); padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; transition:0.2s; }
+        .btn-add { background: white; border: 1px solid var(--border-light); color: var(--txt-primary); padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition:0.2s; }
         .btn-add:hover { background: #F1F5F9; }
 
-        /* RESTO DO CSS */
+        /* RESTO (MANTIDO) */
         #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-app); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
-        .login-box { background: var(--bg-card); padding: 40px; border-radius: 20px; width: 350px; text-align: center; border: 1px solid var(--border-light); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-        .login-input { width: 100%; padding: 14px; margin: 20px 0; border: 1px solid var(--border-light); border-radius: 8px; font-size: 16px; background: var(--bg-app); outline: none; }
-        .login-btn { width: 100%; padding: 14px; background: var(--brand); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
-        .login-btn:hover { filter: brightness(1.1); }
-
-        .sidebar { width: 400px; background: var(--bg-sidebar); color: var(--txt-inverse); display: flex; flex-direction: column; border-right: 1px solid var(--border-dark); z-index: 50; transition: transform 0.3s ease; }
+        .login-box { background: #fff; padding: 40px; border-radius: 20px; border: 1px solid var(--border-light); box-shadow: 0 20px 40px rgba(0,0,0,0.1); width: 350px; text-align: center; }
+        .login-input { width: 100%; padding: 14px; margin: 20px 0; border: 1px solid var(--border-light); border-radius: 8px; font-size: 16px; outline:none; }
+        .login-btn { width: 100%; padding: 14px; background: var(--brand); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
+        
+        .sidebar { width: 400px; background: var(--bg-sidebar); color: #F8FAFC; display: flex; flex-direction: column; border-right: 1px solid var(--border-dark); z-index: 50; transition: 0.3s; }
         .brand-section { padding: 20px; border-bottom: 1px solid var(--border-dark); background: rgba(0,0,0,0.2); }
-        .user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
-        .avatar { width: 32px; height: 32px; background: var(--brand); border-radius: 8px; display: grid; place-items: center; font-weight: 700; color: white; }
         .tabs { display: flex; gap: 5px; background: #1E293B; padding: 4px; border-radius: 8px; }
-        .tab { flex: 1; text-align: center; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 6px; color: #94A3B8; transition: 0.2s; }
+        .tab { flex: 1; text-align: center; padding: 8px; font-size: 12px; font-weight: 700; cursor: pointer; border-radius: 6px; color: #94A3B8; }
         .tab.active { background: #334155; color: white; }
-
-        .view { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        #historyView { display: none; }
         .chat-scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
-        .bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; max-width: 90%; white-space: pre-wrap; }
-        .bubble-ai { background: #1E293B; color: #E2E8F0; border: 1px solid #334155; }
+        .bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; max-width: 90%; white-space: pre-wrap; }
+        .bubble-ai { background: #1E293B; color: #E2E8F0; }
         .bubble-user { align-self: flex-end; background: var(--brand); color: #064E3B; font-weight: 600; margin-left: auto; }
         .input-area { padding: 20px; background: var(--bg-sidebar); border-top: 1px solid var(--border-dark); }
-        .input-container { background: #1E293B; border-radius: 12px; border: 1px solid #334155; display: flex; align-items: flex-end; min-height: 50px; }
-        .chat-input { width: 100%; background: transparent; border: none; color: white; padding: 14px; font-size: 14px; outline: none; resize: none; overflow-y: hidden; height: 50px; max-height: 120px; font-family: 'Inter', sans-serif; }
-        .send-btn { background: var(--brand); border: none; width: 32px; height: 32px; border-radius: 6px; margin: 0 8px 8px 0; cursor: pointer; color: #022c22; display: grid; place-items: center; flex-shrink: 0; }
-
+        .chat-input { width: 100%; background: #1E293B; border: 1px solid #334155; color: white; padding: 14px; border-radius: 12px; outline: none; resize: none; height: 50px; }
+        .send-btn { background: var(--brand); border: none; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; color: #022c22; display: grid; place-items: center; }
+        
         .logs-list { flex: 1; overflow-y: auto; padding: 0; }
-        .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; align-items: flex-start; }
+        .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; }
         .undo-btn { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; }
 
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
-        .top-bar { padding: 20px 30px; background: var(--bg-card); border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
-        .nav-buttons { display: flex; gap: 4px; }
-        .nav-btn { width: 36px; height: 36px; border: 1px solid var(--border-light); background: var(--bg-app); border-radius: 6px; cursor: pointer; color: var(--txt-secondary); display: grid; place-items: center; transition:0.2s; }
+        .top-bar { padding: 20px 30px; background: #fff; border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
+        .nav-btn { width: 36px; height: 36px; border: 1px solid var(--border-light); background: #F8FAFC; border-radius: 6px; cursor: pointer; color: var(--txt-secondary); display: grid; place-items: center; transition:0.2s; }
         .nav-btn:hover { background: #E2E8F0; color: var(--txt-primary); }
-        
         .calendar-scroll { flex: 1; overflow-y: auto; padding: 20px; }
         .grid-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-bottom: 10px; }
-        .weekday { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-secondary); text-transform: uppercase; }
+        .weekday { text-align: center; font-size: 11px; font-weight: 700; color: var(--txt-secondary); }
         .grid-body { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; padding-bottom: 40px; }
         
-        .day-card { background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px; min-height: 140px; padding: 12px; display: flex; flex-direction: column; position: relative; cursor: pointer; transition: 0.2s; }
+        .day-card { background: #fff; border: 1px solid var(--border-light); border-radius: 12px; min-height: 140px; padding: 12px; display: flex; flex-direction: column; position: relative; cursor: pointer; transition: 0.2s; }
         .day-card:hover { border-color: var(--brand); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .day-num { font-size: 18px; font-weight: 700; color: var(--txt-primary); margin-bottom: 8px; }
         .is-today { border: 2px solid var(--brand); }
@@ -108,7 +91,7 @@
         .c-com { background: #eff6ff; color: #1e3a8a; border-color: #93c5fd; }
         .c-off { background: #F1F5F9; color: #64748B; border-color: #CBD5E1; text-decoration: line-through; }
 
-        .menu-toggle { display: none; font-size: 24px; cursor: pointer; color: var(--txt-primary); margin-right: 15px; }
+        .menu-toggle { display: none; font-size: 24px; cursor: pointer; margin-right: 15px; }
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 40; }
         @media (max-width: 768px) {
             .sidebar { position: fixed; height: 100%; left: 0; transform: translateX(-100%); width: 85%; }
@@ -118,7 +101,7 @@
             .grid-header { display: none; } 
             .grid-body { grid-template-columns: 1fr; }
         }
-        .toast { position: fixed; top: 20px; right: 20px; background: var(--bg-card); padding: 15px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-left: 4px solid var(--brand); z-index: 100; color: var(--txt-primary); display:none; }
+        .toast { position: fixed; top: 20px; right: 20px; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); border-left: 4px solid var(--brand); z-index: 100; color: var(--txt-primary); display:none; }
     </style>
 </head>
 <body>
@@ -126,14 +109,13 @@
     <div id="dayEditor" class="modal-overlay">
         <div class="modal-card">
             <div class="modal-header">
-                <div class="modal-title">Editar <span id="editorDateDisplay"></span></div>
+                <div class="modal-title">Detalhes de <span id="editorDateDisplay"></span></div>
                 <i class="ph-bold ph-x" style="cursor:pointer" onclick="closeEditor()"></i>
             </div>
-            <div class="modal-body" id="editorList">
-                </div>
+            <div class="modal-body" id="editorList"></div>
             <div class="modal-footer">
-                <button class="btn-add" onclick="addEditorItem()"><i class="ph-bold ph-plus"></i> Novo Item</button>
-                <button class="btn-save" onclick="saveEditor()"><i class="ph-bold ph-check"></i> SALVAR DIA</button>
+                <button class="btn-add" onclick="addEditorItem()"><i class="ph-bold ph-plus"></i> Nova Experiência</button>
+                <button class="btn-save" onclick="saveEditor()"><i class="ph-bold ph-check"></i> SALVAR ALTERAÇÕES</button>
             </div>
         </div>
     </div>
@@ -141,8 +123,7 @@
     <div id="auth-screen">
         <div class="login-box">
             <div style="font-size:40px; color:var(--brand); margin-bottom:10px;"><i class="ph-bold ph-calendar-check"></i></div>
-            <h2 style="margin:0; color:var(--txt-primary);">Awake OS</h2>
-            <p style="color:var(--txt-secondary); font-size:14px;">Identifique-se</p>
+            <h2 style="margin:0 0 20px 0;">Awake OS</h2>
             <input type="text" id="nameInput" class="login-input" placeholder="Seu Nome">
             <button class="login-btn" onclick="doLogin()">ENTRAR</button>
         </div>
@@ -171,9 +152,7 @@
                 </div>
             </div>
         </div>
-        <div id="historyView" class="view">
-            <div class="logs-list" id="logsList"></div>
-        </div>
+        <div id="historyView" class="view"><div class="logs-list" id="logsList"></div></div>
     </div>
 
     <div class="main">
@@ -207,6 +186,7 @@
         let chatContext = [];
         let currUser = localStorage.getItem('awake_user');
         let currentEditingDate = null;
+        let quillInstances = {}; // Guarda as instâncias dos editores
 
         const FERIADOS = {
             "2026-01-01": {nome: "Confraternização", tipo: "fer"}, "2026-01-25": {nome: "Aniv. SP", tipo: "fer"},
@@ -247,12 +227,13 @@
             try { const r = await fetch('/api/get_events'); dbEvents = await r.json(); render(); } catch(e){}
         }
 
-        // --- EDITOR MANUAL ---
+        // --- EDITOR MANUAL (RICH TEXT) ---
         function openEditor(dateStr) {
             currentEditingDate = dateStr;
             document.getElementById('editorDateDisplay').innerText = dateStr.split('-').reverse().join('/');
             const list = document.getElementById('editorList');
             list.innerHTML = '';
+            quillInstances = {}; // Reset
 
             const items = getEventsForDate(dateStr); 
             items.forEach(ev => {
@@ -267,35 +248,73 @@
             const div = document.createElement('div');
             div.className = 'editor-item';
             
-            // Seletor Inteligente
+            // Gera ID único para o editor
+            const editorId = 'quill-' + Date.now() + Math.random().toString(36).substr(2, 9);
             const sel = (val) => val === type ? 'selected' : '';
 
             div.innerHTML = `
-                <div class="editor-inputs">
-                    <div class="ed-row">
-                        <input type="text" class="ed-input" value="${desc}" placeholder="Título (Ex: 19h Yoga)">
-                        <select class="ed-select">
-                            <option value="c-esp" ${sel('c-esp')}>★ Especial (Amarelo)</option>
-                            <option value="c-sh" ${sel('c-sh')}>♫ SH (Verde)</option>
-                            <option value="c-teca" ${sel('c-teca')}>☸ Teca (Roxo)</option>
-                            <option value="c-off" ${sel('c-off')}>💤 Recesso (Cinza)</option>
-                            <option value="c-fer" ${sel('c-fer')}>🎈 Feriado (Vermelho)</option>
-                        </select>
-                    </div>
-                    <textarea class="ed-area" placeholder="Detalhes ocultos, notas, checklist...">${details || ''}</textarea>
+                <div class="editor-header">
+                    <input type="text" class="ed-input" value="${desc}" placeholder="Título (Ex: 19h Yoga)">
+                    <select class="ed-select">
+                        <option value="c-esp" ${sel('c-esp')}>★ Especial (Amarelo)</option>
+                        <option value="c-sh" ${sel('c-sh')}>♫ SH (Verde)</option>
+                        <option value="c-teca" ${sel('c-teca')}>☸ Teca (Roxo)</option>
+                        <option value="c-off" ${sel('c-off')}>💤 Recesso (Cinza)</option>
+                        <option value="c-fer" ${sel('c-fer')}>🎈 Feriado (Vermelho)</option>
+                        <option value="c-com" ${sel('c-com')}>📅 Data (Azul)</option>
+                    </select>
+                    <div class="btn-del" onclick="this.closest('.editor-item').remove()"><i class="ph-bold ph-trash"></i></div>
                 </div>
-                <div class="btn-del" onclick="this.parentElement.remove()"><i class="ph-bold ph-trash"></i></div>
+                <div id="${editorId}"></div>
             `;
             document.getElementById('editorList').appendChild(div);
+
+            // Inicializa Quill
+            const quill = new Quill('#'+editorId, {
+                theme: 'snow',
+                modules: {
+                    toolbar: [
+                        ['bold', 'italic', 'underline'],
+                        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                        ['clean']
+                    ]
+                }
+            });
+            
+            // Carrega conteúdo existente (Se for HTML)
+            if(details) {
+                quill.root.innerHTML = details; 
+            } else {
+                quill.setText(''); // Garante vazio
+            }
+            
+            // Salva referência
+            quillInstances[editorId] = quill;
         }
 
         async function saveEditor() {
             const items = [];
-            document.querySelectorAll('.editor-item').forEach(el => {
+            
+            // Itera sobre os cards do DOM
+            const editorItems = document.querySelectorAll('.editor-item');
+            
+            editorItems.forEach(el => {
                 const desc = el.querySelector('input').value.trim();
                 const type = el.querySelector('select').value;
-                const det = el.querySelector('textarea').value.trim();
-                if(desc) items.push({ desc: desc, details: det, type: type });
+                
+                // Pega o ID do editor Quill dentro deste card
+                const editorContainer = el.querySelector('div[id^="quill-"]');
+                let detailsHTML = "";
+                
+                if (editorContainer && quillInstances[editorContainer.id]) {
+                    const q = quillInstances[editorContainer.id];
+                    // Pega o HTML, mas se for só vazio/espaço, salva vazio
+                    if (q.getLength() > 1) {
+                        detailsHTML = q.root.innerHTML;
+                    }
+                }
+
+                if(desc) items.push({ desc: desc, details: detailsHTML, type: type });
             });
 
             await fetch('/api/save_day', {
@@ -308,10 +327,8 @@
         }
         function closeEditor() { document.getElementById('dayEditor').style.display = 'none'; }
 
-        // --- DOWNLOAD ---
         function downloadImage() {
             const node = document.querySelector('.main');
-            // Hack para melhorar qualidade: aumenta a escala do canvas
             html2canvas(node, { scale: 2, backgroundColor: "#F8FAFC" }).then(canvas => {
                 const link = document.createElement('a');
                 link.download = `Awake_Calendar_${MONTHS[currMonth]}.png`;
@@ -320,18 +337,14 @@
             });
         }
 
-        // --- CORE LOGIC (SAFE DATE PARSING CORRIGIDO) ---
+        // --- CORE LOGIC (SAFE DATE FIX) ---
         function getEventsForDate(ds) {
-            // CORREÇÃO: Cria data como MEIO-DIA para evitar bug de fuso horário (-3h)
-            // '2026-01-01'.split('-') -> ['2026', '01', '01']
             const p = ds.split('-'); 
             const dt = new Date(p[0], p[1]-1, p[2], 12, 0, 0); 
-            
             const wd = dt.getDay(); 
             const m = dt.getMonth() + 1;
             let list = [];
             
-            // DB Priority
             const ex = dbEvents.find(e => e.data === ds);
             if(ex) {
                 try {
@@ -343,7 +356,6 @@
                 return list;
             }
 
-            // Standard Rules
             if(FERIADOS[ds]) list.push({ desc: (FERIADOS[ds].tipo==='fer'?'🎈 ':'📅 ') + FERIADOS[ds].nome, type: FERIADOS[ds].tipo==='fer'?'c-fer':'c-com' });
             if(wd===2 && ![1,7].includes(m)) list.push({ desc: "08h15 Talk Med. (Teca)", type: 'c-teca' });
             if(wd===1) list.push({ desc: "19h SH (Haran)", type: 'c-sh' });
@@ -375,17 +387,16 @@
             for(let i=0; i<f; i++) if(window.innerWidth>768) g.innerHTML += `<div></div>`;
 
             for(let d=1; d<=tot; d++) {
-                // Cria string YYYY-MM-DD segura
                 const mStr = currMonth.toString().padStart(2,'0');
                 const dStr = d.toString().padStart(2,'0');
                 const ds = `2026-${mStr}-${dStr}`;
-
                 const isT = (is2026 && d===today.getDate() && currMonth===(today.getMonth()+1));
                 
                 const events = getEventsForDate(ds);
                 let html = "";
                 events.forEach(ev => {
-                    const hasDet = ev.details && ev.details.length > 0 ? 'has-details' : '';
+                    // Check for real HTML content
+                    const hasDet = ev.details && ev.details.length > 20 ? 'has-details' : ''; // >20 to ignore empty <p><br></p>
                     const cls = ev.type || getChipClass(ev.desc);
                     html += `<div class="chip ${cls} ${hasDet}">${ev.desc}</div>`;
                 });
