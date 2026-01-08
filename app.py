@@ -9,7 +9,7 @@ from groq import Groq
 
 app = Flask(__name__)
 
-# --- CONFIGURATION ---
+# --- CONFIGURAÇÃO ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
@@ -18,29 +18,9 @@ try:
     supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
     client = Groq(api_key=GROQ_API_KEY)
 except Exception as e:
-    print(f"Configuration Error: {e}")
+    print(f"Erro de Configuração: {e}")
 
 SP_TZ = pytz.timezone('America/Sao_Paulo')
-
-# --- HELPER FUNCTION: ROBUST JSON EXTRACTION ---
-def extract_json_from_text(text):
-    """
-    Extracts a JSON object from a string, handling potential conversational filler.
-    Finds the first '{' and the last '}' to isolate the JSON.
-    """
-    try:
-        # Try direct parsing first
-        return json.loads(text)
-    except json.JSONDecodeError:
-        try:
-            # Regex to find the JSON object
-            match = re.search(r'\{.*\}', text, re.DOTALL)
-            if match:
-                json_str = match.group(0)
-                return json.loads(json_str)
-        except Exception:
-            pass
-    return None
 
 @app.route('/')
 def home():
@@ -117,11 +97,31 @@ def save_day():
     except Exception as e:
         return jsonify({"ok": False, "msg": str(e)})
 
-# --- AI BRAIN (DUAL MODE: MANAGER + EXPERT) ---
+# --- HELPER: EXTRAÇÃO ROBUSTA DE JSON ---
+def extract_json_from_text(text):
+    """
+    Tenta encontrar um objeto JSON válido dentro de uma string de texto.
+    Resolve o problema da IA adicionar texto antes ou depois do JSON.
+    """
+    try:
+        # Tenta parse direto
+        return json.loads(text)
+    except json.JSONDecodeError:
+        try:
+            # Busca o padrão JSON {...} usando Regex (dotall para pegar quebras de linha)
+            match = re.search(r'\{.*\}', text, re.DOTALL)
+            if match:
+                json_str = match.group(0)
+                return json.loads(json_str)
+        except Exception:
+            pass
+    return None
+
+# --- CÉREBRO DA IA (MODO DUAL: GESTORA + EXPERT) ---
 @app.route('/api/chat', methods=['POST'])
 def chat():
     if not GROQ_API_KEY:
-        return jsonify({"ok": False, "reply": "Erro API."})
+        return jsonify({"ok": False, "reply": "Erro API: Chave não configurada."})
     
     d = request.json
     user_msg = d['text']
@@ -130,14 +130,14 @@ def chat():
 
     hoje = datetime.now(SP_TZ).strftime("%Y-%m-%d (%A)")
 
-    # 1. Retrieve context (changes in DB)
+    # 1. Recupera o que já mudou no calendário
     try:
         current_data = supabase.table("excecoes").select("data, descricao").execute().data
         db_context = json.dumps(current_data)
     except:
         db_context = "[]"
 
-    # 2. MASTER PROMPT
+    # 2. O PROMPT MESTRE
     sys_prompt = f"""
     Você é a IA do "Awake Calendar 2026". Hoje é {hoje}.
 
@@ -188,11 +188,14 @@ def chat():
         )
         
         raw_content = comp.choices[0].message.content
+        print(f"RAW AI RESPONSE: {raw_content}") # Log para debug no terminal
+
+        # 3. EXTRAÇÃO ROBUSTA DE JSON (A CORREÇÃO PRINCIPAL)
         ai_resp = extract_json_from_text(raw_content)
 
         if ai_resp is None:
-             # Fallback if JSON extraction fails completely
-             return jsonify({"ok": True, "reply": "Entendi, mas tive um pequeno problema técnico ao processar sua solicitação. Poderia repetir?", "actions_count": 0})
+             # Fallback caso a extração falhe totalmente, evita o erro genérico
+             return jsonify({"ok": True, "reply": "Entendi, mas tive um pequeno problema técnico ao processar sua solicitação. Poderia repetir de forma mais direta?", "actions_count": 0})
 
         cnt = 0
 
@@ -201,19 +204,19 @@ def chat():
                 target_date = a['date']
                 act = a.get('action', 'create')
 
-                # Prepare Payload
+                # Prepara Payload
                 if act == 'cancel':
                     payload = {"data": target_date, "tipo": "cancelado", "descricao": "Cancelado", "detalhes": ""}
                 else:
-                    # Define visual type
+                    # Define tipo visual
                     v_type = a.get('type', 'c-esp')
 
-                    # If holiday/notice, no time/instructor needed in visual description
+                    # Se for feriado/aviso, não precisa de hora/instrutor no visual
                     if act == 'info' or v_type in ['c-fer', 'c-com', 'c-off']:
                         desc_str = a.get('title')
                         struct = [{"title": a.get('title'), "type": v_type, "details": a.get('details', '')}]
                     else:
-                        # Full event
+                        # Evento completo
                         desc_str = f"{a.get('time')} {a.get('title')} ({a.get('instructor')})"
                         struct = [{
                             "time": a.get('time', ''), "title": a.get('title', ''),
@@ -226,7 +229,7 @@ def chat():
                         "descricao": desc_str, "detalhes": json.dumps(struct)
                     }
 
-                # Execute in DB
+                # Executa no Banco
                 exist = supabase.table("excecoes").select("*").eq("data", target_date).execute()
                 prev = exist.data[0] if exist.data else None
                 supabase.table("excecoes").upsert(payload).execute()
@@ -238,12 +241,12 @@ def chat():
                 }).execute()
                 cnt += 1
             except Exception as e:
-                print(f"Error processing action: {e}")
+                print(f"Erro ao processar ação: {e}")
                 pass
 
         return jsonify({"ok": True, "reply": ai_resp.get("reply", "Feito."), "actions_count": cnt})
     except Exception as e:
-        print(f"Critical AI Error: {e}")
+        print(f"Erro Crítico Chat: {e}")
         return jsonify({"ok": False, "reply": f"Erro interno: {str(e)}"})
 
 if __name__ == '__main__':
