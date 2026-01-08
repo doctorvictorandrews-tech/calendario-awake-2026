@@ -9,10 +9,10 @@
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
     <style>
-        /* --- DESIGN SYSTEM (LIGHT MODE ONLY) --- */
+        /* DESIGN SYSTEM (FIXED LIGHT MODE) */
         :root {
             --bg-app: #F8FAFC; 
-            --bg-sidebar: #0F172A; /* Sidebar continua escura para contraste profissional */
+            --bg-sidebar: #0F172A; 
             --bg-card: #FFFFFF;
             --txt-primary: #0F172A; 
             --txt-secondary: #64748B; 
@@ -20,21 +20,20 @@
             --border-light: #E2E8F0; 
             --border-dark: #1E293B;
             --brand: #10B981; 
-            --brand-glow: rgba(16, 185, 129, 0.3);
             --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background-color: var(--bg-app); color: var(--txt-primary); font-family: 'Plus Jakarta Sans', sans-serif; height: 100vh; display: flex; overflow: hidden; }
 
-        /* LOGIN SCREEN */
+        /* LOGIN */
         #auth-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-app); z-index: 9999; display: flex; justify-content: center; align-items: center; flex-direction: column; }
         .login-box { background: var(--bg-card); padding: 40px; border-radius: 20px; width: 350px; text-align: center; border: 1px solid var(--border-light); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
         .login-input { width: 100%; padding: 14px; margin: 20px 0; border: 1px solid var(--border-light); border-radius: 8px; font-size: 16px; background: var(--bg-app); outline: none; }
         .login-btn { width: 100%; padding: 14px; background: var(--brand); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
         .login-btn:hover { filter: brightness(1.1); }
 
-        /* LAYOUT */
+        /* SIDEBAR */
         .sidebar { width: 400px; background-color: var(--bg-sidebar); color: var(--txt-inverse); display: flex; flex-direction: column; border-right: 1px solid var(--border-dark); z-index: 50; transition: transform 0.3s ease; }
         .brand-section { padding: 20px; border-bottom: 1px solid var(--border-dark); background: rgba(0,0,0,0.2); }
         .user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
@@ -56,12 +55,7 @@
         .chat-input { width: 100%; background: transparent; border: none; color: white; padding: 14px; font-size: 14px; outline: none; resize: none; overflow-y: hidden; height: 50px; max-height: 120px; font-family: 'Inter', sans-serif; }
         .send-btn { background: var(--brand); border: none; width: 32px; height: 32px; border-radius: 6px; margin: 0 8px 8px 0; cursor: pointer; color: #022c22; display: grid; place-items: center; flex-shrink: 0; }
 
-        /* LOGS */
-        .logs-list { flex: 1; overflow-y: auto; padding: 0; }
-        .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; align-items: flex-start; }
-        .undo-btn { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; }
-
-        /* CALENDAR */
+        /* MAIN CALENDAR */
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
         .top-bar { padding: 20px 30px; background: var(--bg-card); border-bottom: 1px solid var(--border-light); display: flex; justify-content: space-between; align-items: center; }
         .nav-btn { width: 36px; height: 36px; border: 1px solid var(--border-light); background: var(--bg-app); border-radius: 6px; cursor: pointer; color: var(--txt-secondary); display: grid; place-items: center; }
@@ -74,15 +68,19 @@
         .day-num { font-size: 18px; font-weight: 700; color: var(--txt-primary); margin-bottom: 8px; }
         .is-today { border: 2px solid var(--brand); }
         .is-today .day-num { color: var(--brand); }
-        
-        /* CHIPS (Cores fixas Light Mode) */
+
+        /* CHIPS COLORS */
         .chip { font-size: 11px; padding: 6px 8px; border-radius: 6px; font-weight: 600; margin-bottom: 4px; border-left: 3px solid transparent; }
-        .c-sh { background: #ECFDF5; color: #065F46; border-color: #34D399; }
-        .c-teca { background: #F5F3FF; color: #5B21B6; border-color: #A78BFA; }
-        .c-esp { background: #FFFBEB; color: #92400E; border-color: #FCD34D; }
-        .c-fer { background: #FEF2F2; color: #991B1B; border-color: #FCA5A5; } /* Feriado Vermelho */
-        .c-com { background: #eff6ff; color: #1e3a8a; border-color: #93c5fd; } /* Data Comemorativa Azul */
+        .c-sh { background: #ECFDF5; color: #065F46; border-color: #34D399; } /* Verde */
+        .c-teca { background: #F5F3FF; color: #5B21B6; border-color: #A78BFA; } /* Roxo */
+        .c-esp { background: #FFFBEB; color: #92400E; border-color: #FCD34D; } /* Amarelo */
+        .c-fer { background: #FEF2F2; color: #991B1B; border-color: #FCA5A5; } /* Vermelho (Feriado) */
+        .c-com { background: #eff6ff; color: #1e3a8a; border-color: #93c5fd; } /* Azul (Datas Comem.) */
         .c-off { background: #F1F5F9; color: #64748B; border-color: #CBD5E1; text-decoration: line-through; }
+
+        /* Logs */
+        .log-item { padding: 15px 20px; border-bottom: 1px solid var(--border-dark); display: flex; gap: 10px; align-items: flex-start; }
+        .undo-btn { background: rgba(239, 68, 68, 0.1); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.2); padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; font-weight: 700; }
 
         /* Mobile */
         .menu-toggle { display: none; font-size: 24px; cursor: pointer; color: var(--txt-primary); margin-right: 15px; }
@@ -126,7 +124,7 @@
         </div>
 
         <div id="chatView" class="view">
-            <div class="chat-scroll" id="chatHistory"><div class="msg-group"><div class="bubble bubble-ai">Olá! Estou pronta.</div></div></div>
+            <div class="chat-scroll" id="chatHistory"><div class="msg-group"><div class="bubble bubble-ai">Olá! Pronta para atualizar o calendário.</div></div></div>
             <div class="input-area">
                 <div class="input-container">
                     <textarea id="userInput" class="chat-input" placeholder="Digite..." rows="1"></textarea>
@@ -169,7 +167,6 @@
         let chatContext = [];
         let currUser = localStorage.getItem('awake_user');
 
-        // CALENDÁRIO COMPLETO 2026 (SP + BR + COMEMORATIVAS)
         const FERIADOS = {
             "2026-01-01": {nome: "Confraternização", tipo: "fer"},
             "2026-01-25": {nome: "Aniv. SP", tipo: "fer"},
@@ -192,7 +189,6 @@
             "2026-12-25": {nome: "Natal", tipo: "fer"}
         };
 
-        // --- AUTH ---
         if(currUser) { document.getElementById('auth-screen').style.display='none'; setupUser(); }
         function doLogin() {
             const n = document.getElementById('nameInput').value.trim();
@@ -209,20 +205,14 @@
         }
         function logout() { localStorage.removeItem('awake_user'); window.location.reload(); }
 
-        // --- CORE ---
         async function init() {
             const ta = document.getElementById('userInput');
             ta.addEventListener('input', function(){ this.style.height='auto'; this.style.height=(this.scrollHeight)+'px'; if(!this.value) this.style.height='50px'; });
             ta.addEventListener('keydown', function(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); } });
             await loadEvents();
         }
-
         async function loadEvents() {
-            try {
-                const r = await fetch('/api/get_events');
-                dbEvents = await r.json();
-                render();
-            } catch(e){}
+            try { const r = await fetch('/api/get_events'); dbEvents = await r.json(); render(); } catch(e){}
         }
 
         async function loadLogs() {
@@ -242,8 +232,8 @@
         async function undo(id) {
             if(!confirm("Desfazer essa ação?")) return;
             await fetch('/api/undo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({log_id:id}) });
-            await loadEvents(); // Importante: Recarregar eventos para ver a mudança
-            await loadLogs(); 
+            await loadEvents(); // Recarrega calendário
+            await loadLogs();   // Recarrega lista
             showToast("Ação desfeita!");
         }
 
@@ -255,7 +245,6 @@
             if(t==='history') loadLogs();
         }
 
-        // --- CHAT & RENDER ---
         async function sendMessage() {
             const inp = document.getElementById('userInput');
             const txt = inp.value.trim();
@@ -294,6 +283,15 @@
         function toggleMenu() { document.getElementById('sidebar').classList.toggle('active'); document.querySelector('.overlay').classList.toggle('active'); }
         function showToast(m) { const t=document.getElementById('toast'); t.innerText=m; t.style.display='block'; setTimeout(()=>t.style.display='none',3000); }
 
+        // --- RENDER INTELIGENTE (COLORING LOGIC) ---
+        function getChipClass(desc) {
+            const txt = desc.toLowerCase();
+            if(txt.includes('sh') || txt.includes('sound healing')) return 'c-sh'; // Verde
+            if(txt.includes('talk') || txt.includes('meditation')) return 'c-teca'; // Roxo
+            if(txt.includes('recesso')) return 'c-off';
+            return 'c-esp'; // Amarelo (Padrão)
+        }
+
         function render() {
             const g = document.getElementById('grid');
             document.getElementById('monthTitle').innerText = MONTHS[currMonth];
@@ -313,7 +311,7 @@
                 
                 let h = "";
 
-                // 1. CAMADA FERIADOS/DATAS (SEMPRE MOSTRA)
+                // 1. FERIADOS (Sempre aparecem)
                 if(FERIADOS[ds]) {
                     const f = FERIADOS[ds];
                     const cls = f.tipo === 'fer' ? 'c-fer' : 'c-com';
@@ -321,30 +319,26 @@
                     h += `<div class="chip ${cls}">${icon} ${f.nome}</div>`;
                 }
 
-                // 2. CAMADA EVENTOS
+                // 2. EVENTOS (Banco ou Padrão)
                 let ex = dbEvents.find(e=>e.data===ds);
                 
-                // Se existe exceção
                 if(ex) {
                     if(ex.tipo==='cancelado') {
-                        // Se foi cancelado, NÃO mostra agenda padrão.
-                        // Mas o feriado (adicionado no passo 1) continua lá.
-                        // h += nada
+                        // Não renderiza nada extra (vazio)
                     } else if(ex.tipo==='recesso') {
                         h+=`<div class="chip c-off">💤 ${ex.descricao}</div>`;
                     } else {
-                        // Evento Especial (IA)
-                        h+=`<div class="chip c-esp">★ ${ex.descricao}</div>`;
+                        // Usa a função inteligente de cores
+                        const colorClass = getChipClass(ex.descricao);
+                        h+=`<div class="chip ${colorClass}">★ ${ex.descricao}</div>`;
                     }
-                } 
-                // Se NÃO existe exceção (Agenda Padrão)
-                else {
-                    // REGRA TECA (Terças)
+                } else {
+                    // Agenda Padrão (Fallback)
+                    // Regra Teca (Terça)
                     if(wd===2 && ![1,7].includes(currMonth)) {
                         h+=`<div class="chip c-teca">08h15 Talk Med. (Teca)</div>`;
                     }
                     
-                    // AGENDA BASE (SH)
                     let sh="";
                     if(wd===1) sh="19h SH (Haran)"; 
                     if(wd===2) sh="19h SH (Karina)";
@@ -354,10 +348,8 @@
                     
                     if(sh) h+=`<div class="chip c-sh">${sh}</div>`;
                     
-                    // Sábado Duplo
                     if(wd===6) {
-                        h+=`<div class="chip c-sh">10h SH (Karina)</div>`;
-                        h+=`<div class="chip c-sh">15h SH (Karina)</div>`;
+                        h+=`<div class="chip c-sh">10h SH (Karina)</div><div class="chip c-sh">15h SH (Karina)</div>`;
                     }
                 }
                 
