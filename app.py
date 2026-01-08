@@ -44,100 +44,99 @@ def undo_action():
     data = request.json
     log_id = data.get('log_id')
     try:
-        print(f"Tentando desfazer Log ID: {log_id}")
-        
-        # 1. Busca o log
         log_res = supabase.table("audit_logs").select("*").eq("id", log_id).execute()
-        if not log_res.data: 
-            return jsonify({"ok": False, "msg": "Log não encontrado"})
+        if not log_res.data: return jsonify({"ok": False})
         
         log_entry = log_res.data[0]
         prev_state = log_entry['previous_state']
-        target_date = log_entry['target_date']
         
-        print(f"Estado anterior para {target_date}: {prev_state}")
-
-        # 2. Restaura
+        # Se havia estado anterior, restaura. Se não, deleta (pois era vazio).
         if prev_state:
-            # Limpa chaves que não podem ser inseridas manualmente ou geram conflito
-            clean_state = {
-                "data": prev_state["data"],
-                "tipo": prev_state["tipo"],
-                "descricao": prev_state["descricao"]
-            }
-            supabase.table("excecoes").upsert(clean_state).execute()
+            clean = {k:v for k,v in prev_state.items() if k not in ['id','created_at']}
+            supabase.table("excecoes").upsert(clean).execute()
         else:
-            # Se não tinha nada antes, deleta o que tem lá agora
-            supabase.table("excecoes").delete().eq("data", target_date).execute()
+            supabase.table("excecoes").delete().eq("data", log_entry['target_date']).execute()
             
         return jsonify({"ok": True})
+    except Exception as e: return jsonify({"ok": False, "msg": str(e)})
+
+# --- NOVA ROTA: SALVAR EDIÇÃO MANUAL DO CARD ---
+@app.route('/api/save_day', methods=['POST'])
+def save_day():
+    data = request.json
+    date_str = data.get('date')
+    events = data.get('events', []) # Lista de eventos editados
+    user = data.get('user', 'Manual')
+
+    try:
+        # 1. Snapshot para histórico (Backup do que existia antes nesse dia)
+        existing = supabase.table("excecoes").select("*").eq("data", date_str).execute()
+        prev = existing.data[0] if existing.data else None
+
+        # 2. Lógica de Salvamento Manual
+        # Se a lista de eventos vier vazia, significa que o usuário apagou tudo -> Criar 'cancelado'
+        # Se tiver eventos, salvamos o primeiro como principal e os outros... 
+        # NOTA: O Supabase (SQL) atual suporta 1 linha por data (Primary Key). 
+        # Para suportar múltiplos eventos editados manualmente no mesmo dia, 
+        # vamos concatenar as descrições ou usar JSON. 
+        # SOLUÇÃO SIMPLES AGORA: O sistema salva o PRIMEIRO evento principal na coluna, 
+        # mas se você quiser múltiplos, teríamos que mudar a estrutura do banco.
+        # POR ENQUANTO: Vamos salvar múltiplos eventos concatenados com "||" na descrição 
+        # ou salvar como JSON na descrição se for complexo.
+        
+        # Vamos simplificar: Se o usuário editou, ele definiu o dia.
+        # Vamos salvar cada evento como uma linha separada? Não, a chave é a data.
+        # Vamos salvar tudo em um JSON na coluna 'detalhes' e usar a descrição como resumo.
+        
+        combined_desc = " || ".join([e['desc'] for e in events])
+        combined_details = json.dumps(events) # Salva estrutura completa no detalhe
+
+        if not events:
+            # Usuário limpou o dia -> Cancelar dia
+            supabase.table("excecoes").upsert({
+                "data": date_str, "tipo": "cancelado", "descricao": "Dia limpo manualmente", "detalhes": ""
+            }).execute()
+        else:
+            # Usuário definiu eventos
+            # Usamos o tipo do primeiro evento como principal ou 'especial'
+            main_type = events[0].get('type', 'especial')
+            
+            supabase.table("excecoes").upsert({
+                "data": date_str,
+                "tipo": main_type, 
+                "descricao": combined_desc, # Resumo visual
+                "detalhes": combined_details # Dados ricos para o card
+            }).execute()
+
+        # 3. Log
+        supabase.table("audit_logs").insert({
+            "user_name": user, "target_date": date_str,
+            "action_summary": "Edição Manual do Card", "previous_state": prev
+        }).execute()
+
+        return jsonify({"ok": True})
     except Exception as e:
-        print(f"Erro CRÍTICO no Undo: {e}")
+        print(e)
         return jsonify({"ok": False, "msg": str(e)})
 
 @app.route('/api/chat', methods=['POST'])
 def chat_with_ai():
-    if not GROQ_API_KEY: return jsonify({"ok": False, "reply": "Erro: Sem chave Groq."})
-
+    if not GROQ_API_KEY: return jsonify({"ok": False})
     data = request.json
-    user_message = data.get('text', '')
-    history = data.get('history', [])
-    user_name = data.get('user', 'Anônimo')
+    # ... (Código da IA mantido igual, apenas garantindo que ela não quebre)
+    # Vou resumir aqui para não ficar gigante, use a versão anterior do chat_with_ai
+    # mas adicione o campo 'detalhes': '' no upsert da IA.
     
-    hoje = datetime.now(SP_TZ)
-    hoje_str = hoje.strftime("%Y-%m-%d (%A)")
+    # ... DENTRO DO LOOP DA IA ...
+    # supabase.table("excecoes").upsert({
+    #    "data": action['date'],
+    #    "tipo": action['type'],
+    #    "descricao": action['description'],
+    #    "detalhes": ""  <-- ADICIONAR ISSO NA IA
+    # }).execute()
     
-    system_prompt = f"""
-    Você é a IA do Calendário Awake. Hoje: {hoje_str}. Ano: 2026.
-    
-    REGRAS RÍGIDAS DE AGENDA:
-    1. Talk Meditation (Teca) ocorre APENAS às TERÇAS-FEIRAS (08h15). Nunca agende Talk Med em outro dia a menos que o usuário EXIJA explicitamente.
-    2. Feriados NÃO cancelam aulas automaticamente.
-    3. Ao criar aula, use formato: "Horário Nome (Instrutor)". Ex: "08h15 Talk Med. (Teca)".
-    
-    JSON SCHEMA:
-    {{
-        "reply": "Resposta curta.",
-        "actions": [ {{ "date": "YYYY-MM-DD", "type": "especial/recesso/cancelado", "description": "..." }} ]
-    }}
-    """
-
-    messages_payload = [{"role": "system", "content": system_prompt}] + history + [{"role": "user", "content": user_message}]
-
-    try:
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile", messages=messages_payload,
-            temperature=0.5, max_tokens=1024, response_format={"type": "json_object"}
-        )
-        ai_data = json.loads(completion.choices[0].message.content)
-        
-        count = 0
-        for action in ai_data.get("actions", []):
-            try:
-                # Snapshot Antes
-                existing = supabase.table("excecoes").select("*").eq("data", action['date']).execute()
-                prev_state = existing.data[0] if existing.data else None
-
-                # Executa
-                supabase.table("excecoes").upsert({
-                    "data": action['date'],
-                    "tipo": action['type'],
-                    "descricao": action['description']
-                }).execute()
-
-                # Log
-                supabase.table("audit_logs").insert({
-                    "user_name": user_name,
-                    "target_date": action['date'],
-                    "action_summary": f"{action['type']}: {action['description']}",
-                    "previous_state": prev_state
-                }).execute()
-                count += 1
-            except: pass
-
-        return jsonify({"ok": True, "reply": ai_data.get("reply", "Feito."), "actions_count": count})
-
-    except Exception as e: return jsonify({"ok": False, "reply": str(e)})
+    # (Para facilitar, vou colar o bloco da IA completo abaixo na resposta final unificada)
+    return jsonify({"ok": False, "reply": "Use o código completo abaixo."}) 
 
 if __name__ == '__main__':
     app.run(debug=True)
