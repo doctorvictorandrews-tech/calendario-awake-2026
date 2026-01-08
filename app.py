@@ -1,18 +1,35 @@
+import os
+import json
+import pytz
 from flask import Flask, render_template, request, jsonify
 from supabase import create_client
-import os
-import re
-from datetime import datetime, date, timedelta
-import pytz
-import dateparser
-from unidecode import unidecode
+from datetime import datetime, date
+import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Configuração Supabase
+# --- CONFIGURAÇÃO (LÊ DO RAILWAY) ---
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+
+# Inicializa Clientes
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+genai.configure(api_key=GOOGLE_API_KEY)
+
+# Configuração da IA (Gemini)
+generation_config = {
+    "temperature": 0.4,
+    "top_p": 0.95,
+    "top_k": 64,
+    "max_output_tokens": 8192,
+    "response_mime_type": "application/json",
+}
+
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    generation_config=generation_config,
+)
 
 SP_TZ = pytz.timezone('America/Sao_Paulo')
 
@@ -23,124 +40,87 @@ def home():
 @app.route('/api/get_events', methods=['GET'])
 def get_events():
     try:
-        # Busca sem cache para garantir tempo real
+        # Busca eventos do banco
         response = supabase.table("excecoes").select("*").execute()
         return jsonify(response.data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/command', methods=['POST'])
-def process_command():
+@app.route('/api/chat', methods=['POST'])
+def chat_with_ai():
     data = request.json
-    raw_text = data.get('text', '')
+    user_message = data.get('text', '')
+    # Opcional: passar o mês que o usuário está vendo para contexto
+    current_view_month = data.get('month', datetime.now(SP_TZ).month)
     
-    # --- MOTOR DE INTELIGÊNCIA ARTIFICIAL (NLP) ---
+    hoje = datetime.now(SP_TZ)
+    hoje_str = hoje.strftime("%Y-%m-%d (%A)")
     
-    # 1. Identificar a DATA (O passo mais difícil)
-    # Configurações para entender "próxima terça", "amanhã", "dia 20"
-    settings = {
-        'PREFER_DATES_FROM': 'future',
-        'DATE_ORDER': 'DMY',
-        'RELATIVE_BASE': datetime.now(SP_TZ),
-        'PREFER_DAY_OF_MONTH': 'current'
-    }
+    # --- O PROMPT MESTRE ---
+    system_instruction = f"""
+    Você é a IA Gerente do Calendário da 'Awake Health'. 
+    Hoje é {hoje_str}. O ano de referência é 2026.
     
-    # Pré-processamento para ajudar o parser
-    text_for_date = raw_text.lower()
-    # Se o usuário digitou apenas "dia 20", o dateparser precisa saber o mês atual se não especificado
-    if re.search(r'\bdia \d{1,2}\b', text_for_date) and "/" not in text_for_date:
-        mes_atual_nome = datetime.now(SP_TZ).strftime("%B") # Ex: January
-        # Tradução manual rápida para ajudar o parser se necessário, mas ele entende PT
-    
-    dt_obj = dateparser.parse(text_for_date, languages=['pt'], settings=settings)
-    
-    # Fallback: Se ele não entendeu, tenta regex bruta de DD/MM
-    if not dt_obj:
-        match = re.search(r'(\d{1,2})/(\d{1,2})', raw_text)
-        if match:
-            try:
-                dt_obj = datetime(2026, int(match.group(2)), int(match.group(1)))
-            except: pass
+    SUA MISSÃO:
+    1. Ler a mensagem do usuário.
+    2. Identificar datas (se ele disser "amanhã", "dia 20", "terça que vem", calcule baseado em {hoje_str} e no ano 2026).
+    3. Extrair ações de agendamento.
+    4. Responder de forma natural e amigável.
 
-    if not dt_obj:
-        return jsonify({"ok": False, "msg": "Não entendi a data. Tente 'Dia 20' ou 'Amanhã'."})
+    TIPOS DE AÇÃO:
+    - 'especial': Aulas, workshops, rituais (Ex: "19h Yoga (Pat)").
+    - 'recesso': Feriados ou folgas.
+    - 'cancelado': Remover uma aula existente.
 
-    # Forçar ano 2026 se a intenção for clara (Opcional, ou deixa dinâmico)
-    # dt_obj = dt_obj.replace(year=2026) 
-    dt_str = dt_obj.strftime("%Y-%m-%d")
-    dt_display = dt_obj.strftime("%d/%m")
-
-    # 2. Identificar TIPO DE AÇÃO
-    clean_text = unidecode(raw_text.lower())
-    tipo = "especial"
-    if any(x in clean_text for x in ["recesso", "feriado", "folga"]): tipo = "recesso"
-    elif any(x in clean_text for x in ["cancelar", "remover", "tirar", "off", "sem aula"]): tipo = "cancelado"
-
-    # 3. Extrair CONTEÚDO (Quem, O Que, Que Horas)
-    desc = "CANCELADO"
-    if tipo == "recesso": desc = "RECESSO"
+    REGRAS DE FORMATAÇÃO:
+    - Sempre formate a descrição da aula como: "Horário Atividade (Instrutor)". Ex: "19h Sound Healing (Haran)".
+    - Se não houver horário, coloque apenas a atividade.
+    - Se for cancelamento, a descrição deve ser "CANCELADO".
     
-    if tipo == "especial":
-        # Remove a data da frase para sobrar só a atividade
-        # Estratégia: Remover números de dia e nomes de meses/dias da semana
-        rest = raw_text
-        # Remove hora (guarda para formatar)
-        hora = ""
-        hora_match = re.search(r'(\d{1,2})[h:](\d{0,2})', rest, re.IGNORECASE)
-        if hora_match:
-            h = hora_match.group(1)
-            m = hora_match.group(2)
-            if m and m != "00": hora = f"{h}h{m}"
-            else: hora = f"{h}h"
-            # Remove a hora do texto original para não duplicar
-            rest = rest.replace(hora_match.group(0), "")
-
-        # Lista de palavras para limpar ("Lixo")
-        garbage = [
-            "no dia", "dia", "em", "na", "para", "o", "a", "as", "às", "de", "do", "da",
-            "substitua", "troque", "altere", "coloque", "por", "pelo", "pela", 
-            "sh", "sound", "healing", "vai ter", "será", "com", "ministrada"
+    RESPOSTA OBRIGATÓRIA EM JSON:
+    {{
+        "reply": "Sua resposta falada aqui...",
+        "actions": [
+            {{
+                "date": "YYYY-MM-DD",
+                "type": "especial" | "recesso" | "cancelado",
+                "description": "Descrição formatada"
+            }}
         ]
-        
-        # Remove data detectada (aproximação)
-        date_str_input = re.search(r'\d{1,2}/\d{1,2}', rest)
-        if date_str_input: rest = rest.replace(date_str_input.group(0), "")
-        rest = re.sub(r'\bdia \d{1,2}\b', '', rest, flags=re.IGNORECASE)
+    }}
+    """
 
-        # Limpa palavras de ligação
-        for g in garbage:
-            pattern = re.compile(r'\b' + re.escape(g) + r'\b', re.IGNORECASE)
-            rest = pattern.sub('', rest)
-
-        # Identifica Instrutor (Fuzzy Search Manual)
-        known_instructors = ["Karina", "Haran", "Pat", "Teca", "Gabe", "Ana", "Victor"]
-        instrutor_found = ""
-        
-        for inst in known_instructors:
-            if unidecode(inst.lower()) in unidecode(rest.lower()):
-                instrutor_found = inst
-                # Remove o nome do instrutor da atividade para formatar bonito no final
-                pattern = re.compile(re.escape(inst), re.IGNORECASE)
-                rest = pattern.sub('', rest)
-        
-        # O que sobrou é a atividade
-        atividade = " ".join(rest.split()).title() # Remove espaços extras e capitaliza
-        if not atividade: atividade = "Evento Especial"
-
-        # Monta a string final perfeita
-        if instrutor_found:
-            desc = f"{hora} {atividade} ({instrutor_found})".strip()
-        else:
-            desc = f"{hora} {atividade}".strip()
-
-    # 4. Salvar
     try:
-        supabase.table("excecoes").upsert({
-            "data": dt_str, "tipo": tipo, "descricao": desc
-        }).execute()
-        return jsonify({"ok": True, "date": dt_display, "desc": desc})
+        # 1. Envia para o Google
+        chat = model.start_chat(history=[])
+        response = chat.send_message(f"{system_instruction}\n\nUSER: {user_message}")
+        
+        # 2. Interpreta o JSON
+        ai_data = json.loads(response.text)
+        reply_text = ai_data.get("reply", "Entendido.")
+        actions = ai_data.get("actions", [])
+        
+        # 3. Executa no Banco de Dados
+        success_count = 0
+        for action in actions:
+            try:
+                supabase.table("excecoes").upsert({
+                    "data": action['date'],
+                    "tipo": action['type'],
+                    "descricao": action['description']
+                }).execute()
+                success_count += 1
+            except:
+                continue
+
+        return jsonify({
+            "ok": True,
+            "reply": reply_text,
+            "actions_count": success_count
+        })
+
     except Exception as e:
-        return jsonify({"ok": False, "msg": str(e)})
+        return jsonify({"ok": False, "reply": "Desculpe, tive um erro de conexão com o cérebro da IA."})
 
 if __name__ == '__main__':
     app.run(debug=True)
